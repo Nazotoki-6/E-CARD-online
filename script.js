@@ -777,6 +777,10 @@ function sfxLotteryReveal(side) {
 async function runSideLottery() {
   if (lotteryDrawing) return;
 
+  // iOS Safari向け: SEをOFFにしていても、抽選ボタンのユーザー操作中に
+  // AudioContextを解放しておき、後から始まるBGMが無音になりにくくする。
+  if (preferences.bgmEnabled || preferences.sfxEnabled) ensureAudio();
+
   const saved = loadSeriesState();
   if (saved) {
     const ok = window.confirm('途中の12戦マッチがあります。新しく抽選すると途中データは上書きされます。新しい対戦を始めますか？');
@@ -900,8 +904,8 @@ async function runMatchIntro(sequenceId) {
 function currentPickPrompt() {
   const lead = leadSideForCurrentPlay();
   return lead === playerSide
-    ? `先に伏せるのは${sideLabel(lead)}（あなた）。カードを選んでください。`
-    : `${sideLabel(lead)}（CPU）が先にカードを伏せた。あなたのカードを選んでください。`;
+    ? `先手は${sideLabel(lead)}（あなた）。カードを選んでください。`
+    : `先手は${sideLabel(lead)}（CPU）。CPUの手は確定済みです。あなたのカードを選んでください。`;
 }
 
 function hideSelectionTray() {
@@ -1336,13 +1340,9 @@ function cancelSelectedCard() {
   sfxCardCancel();
   safeVibrate(6);
   hideSelectionTray();
-  // 選び直し時は、選択前の勝負枠に戻す。
+  // 選び直し時も、確定前の勝負枠にはカードを表示しない。
   showPlaceholder(playerPlayedEl);
-  if (leadSideForCurrentPlay() === playerSide) {
-    showPlaceholder(cpuPlayedEl);
-  } else {
-    showCardBack(cpuPlayedEl, 'CPU');
-  }
+  showPlaceholder(cpuPlayedEl);
   renderHand();
   setMessage(currentPickPrompt());
 }

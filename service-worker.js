@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ecard-online-v18-6-3-selection-slot-fix-20260922';
+const CACHE_NAME = 'ecard-online-v18-6-5-stability-20260922';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=18.6.4',
-  './script.js?v=18.6.4',
+  './style.css?v=18.6.5',
+  './script.js?v=18.6.5',
   './manifest.json',
   './images/back.jpeg',
   './images/citizen.jpeg',
