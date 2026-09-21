@@ -682,6 +682,10 @@ function resetLotteryView() {
     lotteryBtn.textContent = '陣営を抽選する';
   }
   if (lotteryCard) lotteryCard.classList.remove('is-drawing', 'is-revealed', 'is-emperor', 'is-slave');
+  if (lotteryResultImage) {
+    lotteryResultImage.src = 'images/back.jpeg';
+    lotteryResultImage.alt = '抽選前のE-CARD 裏面';
+  }
   if (lotteryResultLabel) lotteryResultLabel.textContent = '抽選前';
   if (lotteryResultSub) lotteryResultSub.textContent = '皇帝側 50% ／ 奴隷側 50%';
 }
@@ -724,6 +728,10 @@ async function runSideLottery() {
   }
   if (lotteryResultLabel) lotteryResultLabel.textContent = '抽選中…';
   if (lotteryResultSub) lotteryResultSub.textContent = 'カードが止まるまで待ってください';
+  if (lotteryResultImage) {
+    lotteryResultImage.src = 'images/back.jpeg';
+    lotteryResultImage.alt = '抽選中のE-CARD 裏面';
+  }
   if (lotteryCard) {
     lotteryCard.classList.remove('is-revealed', 'is-emperor', 'is-slave');
     void lotteryCard.offsetWidth;
@@ -1490,6 +1498,7 @@ const AUDIO = {
   master: null,
   musicGain: null,
   sfxGain: null,
+  compressor: null,
   timer: null,
   step: 0,
 };
@@ -1503,14 +1512,24 @@ function ensureAudio() {
     AUDIO.master = AUDIO.ctx.createGain();
     AUDIO.musicGain = AUDIO.ctx.createGain();
     AUDIO.sfxGain = AUDIO.ctx.createGain();
+    AUDIO.compressor = AUDIO.ctx.createDynamicsCompressor();
 
-    AUDIO.master.gain.value = 0.72;
-    AUDIO.musicGain.gain.value = 0.13;
-    AUDIO.sfxGain.gain.value = 0.24;
+    // v17.2: iPhoneでも聞き取りやすいよう、BGMと効果音を全体的に増幅。
+    // コンプレッサーを最後段に入れて、複数音が重なった時のピークも抑える。
+    AUDIO.master.gain.value = 0.95;
+    AUDIO.musicGain.gain.value = 0.36;
+    AUDIO.sfxGain.gain.value = 0.50;
+
+    AUDIO.compressor.threshold.value = -10;
+    AUDIO.compressor.knee.value = 12;
+    AUDIO.compressor.ratio.value = 4;
+    AUDIO.compressor.attack.value = 0.003;
+    AUDIO.compressor.release.value = 0.22;
 
     AUDIO.musicGain.connect(AUDIO.master);
     AUDIO.sfxGain.connect(AUDIO.master);
-    AUDIO.master.connect(AUDIO.ctx.destination);
+    AUDIO.master.connect(AUDIO.compressor);
+    AUDIO.compressor.connect(AUDIO.ctx.destination);
   }
 
   if (AUDIO.ctx.state === 'suspended') AUDIO.ctx.resume();
@@ -1542,14 +1561,41 @@ function tone(freq, duration = 0.12, type = 'square', volume = 0.18, when = 0, d
 function bgmTick() {
   if (!AUDIO.bgmEnabled || !AUDIO.ctx) return;
 
-  const bass = [110.00, 110.00, 98.00, 103.83, 110.00, 130.81, 98.00, 103.83];
-  const lead = [220.00, 0, 261.63, 0, 246.94, 0, 196.00, 207.65,
-                220.00, 0, 293.66, 0, 261.63, 0, 207.65, 196.00];
-  const i = AUDIO.step % lead.length;
+  // v17.3: 勝負中専用の緊張感BGM。
+  // 低い脈動、半音の不協和、短い時計音を組み合わせ、
+  // 手が進むほど少しずつ高音レイヤーを増やす。
+  const bass = [73.42, 73.42, 69.30, 77.78, 73.42, 82.41, 69.30, 65.41];
+  const tensionLead = [146.83, 0, 155.56, 0, 146.83, 0, 138.59, 0,
+                       146.83, 0, 164.81, 0, 155.56, 0, 138.59, 0];
+  const i = AUDIO.step % 16;
+  const playTension = Math.max(0, Math.min(3, (playInMatch || 1) - 1));
 
-  if (i % 2 === 0) tone(bass[(i / 2) % bass.length], 0.19, 'triangle', 0.24, 0, AUDIO.musicGain);
-  if (lead[i]) tone(lead[i], 0.095, 'square', 0.075, 0.02, AUDIO.musicGain);
-  if (i % 4 === 3) tone(880, 0.025, 'square', 0.022, 0.015, AUDIO.musicGain);
+  // 暗い低音のオスティナート。
+  if (i % 2 === 0) {
+    tone(bass[(i / 2) % bass.length], 0.30, 'triangle', 0.19, 0, AUDIO.musicGain);
+  }
+
+  // 心拍のような二連パルス。
+  if (i === 0 || i === 8) {
+    tone(98.00, 0.085, 'sawtooth', 0.12, 0, AUDIO.musicGain);
+    tone(116.54, 0.065, 'sawtooth', 0.085, 0.10, AUDIO.musicGain);
+  }
+
+  // 半音を含む不協和音。後半の手ほど少し目立たせる。
+  if (tensionLead[i]) {
+    tone(tensionLead[i], 0.13, 'square', 0.050 + playTension * 0.009, 0.025, AUDIO.musicGain);
+  }
+
+  // 時計の針のような短いクリック。
+  if (i % 2 === 1) {
+    tone(1174.66, 0.018, 'square', 0.018 + playTension * 0.004, 0, AUDIO.musicGain);
+  }
+
+  // 3手目以降は高い不穏なレイヤーを追加して緊張を上げる。
+  if (playTension >= 2 && (i === 5 || i === 13)) {
+    tone(311.13, 0.22, 'sine', 0.035 + playTension * 0.006, 0, AUDIO.musicGain);
+    tone(329.63, 0.20, 'sine', 0.024 + playTension * 0.005, 0.035, AUDIO.musicGain);
+  }
 
   AUDIO.step += 1;
 }
@@ -1559,7 +1605,8 @@ function startBgm() {
   if (AUDIO.timer) return;
   AUDIO.step = 0;
   bgmTick();
-  AUDIO.timer = window.setInterval(bgmTick, 220);
+  // 少し速い刻みで、常に張り詰めたテンポを維持する。
+  AUDIO.timer = window.setInterval(bgmTick, 205);
 }
 
 function stopBgm() {
