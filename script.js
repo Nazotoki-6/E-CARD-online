@@ -30,6 +30,12 @@ const cpuScoreLabel = document.getElementById('cpuScoreLabel');
 const seriesProgress = document.getElementById('seriesProgress');
 const orderLabel = document.getElementById('orderLabel');
 const battleZone = document.getElementById('battleZone');
+const compactMatchLabel = document.getElementById('compactMatchLabel');
+const compactSideLabel = document.getElementById('compactSideLabel');
+const compactPlayLabel = document.getElementById('compactPlayLabel');
+const compactPlayerScore = document.getElementById('compactPlayerScore');
+const compactCpuScore = document.getElementById('compactCpuScore');
+const compactLeadLabel = document.getElementById('compactLeadLabel');
 const countdownOverlay = document.getElementById('countdownOverlay');
 const statsResetBtn = document.getElementById('statsResetBtn');
 const seriesRecordLabel = document.getElementById('seriesRecordLabel');
@@ -104,6 +110,7 @@ let seriesId = null;
 let currentMatchLog = [];
 let wakeLock = null;
 let seriesComplete = false;
+let cpuPersonality = null;
 
 // ---- 戦績保存 v4 ------------------------------------------------------
 // 12戦マッチの総合成績と、個別試合・陣営別・連勝記録をlocalStorageへ保存する。
@@ -296,6 +303,7 @@ function saveSeriesState(phase = 'ready', pending = null) {
     matchResults,
     currentMatchLog,
     sessionCpuStats,
+    cpuPersonality,
     seriesRecorded,
     phase,
     pending,
@@ -374,6 +382,7 @@ function restoreSeriesState(state) {
   matchResults = Array.isArray(state.matchResults) ? [...state.matchResults] : [];
   currentMatchLog = Array.isArray(state.currentMatchLog) ? [...state.currentMatchLog] : [];
   if (state.sessionCpuStats) Object.assign(sessionCpuStats, createEmptyCpuStats(), state.sessionCpuStats);
+  cpuPersonality = CPU_PERSONALITIES[state.cpuPersonality] ? state.cpuPersonality : chooseCpuPersonalityKey();
   seriesRecorded = Boolean(state.seriesRecorded);
   seriesComplete = false;
   inputLocked = Boolean(state.inputLocked);
@@ -381,6 +390,7 @@ function restoreSeriesState(state) {
   setupScreen.classList.add('hidden');
   resultScreen.classList.add('hidden');
   gameScreen.classList.remove('hidden');
+  document.body.classList.add('game-active');
   playerRoleLabel.textContent = sideLabel(playerSide);
   cpuRoleLabel.textContent = sideLabel(oppositeSide(playerSide));
   resetBattleView();
@@ -411,6 +421,49 @@ function restoreSeriesState(state) {
 const CPU_STATS_KEY = 'ecard-max-cpu-stats-v2';
 const CPU_STATS_VERSION = 2;
 const sessionCpuStats = createEmptyCpuStats();
+
+// ---- CPU戦型 v18.5 ---------------------------------------------------
+// 12戦シリーズごとに1つの「戦型」を内部で選ぶ。
+// 戦型は最適混合を壊さない範囲で、読みの強さ・特殊カードの切り方・揺らぎ方だけを変える。
+// 対戦中は非公開。12戦終了後に今回の戦型を開示する。
+const CPU_PERSONALITIES = {
+  cautious: {
+    label: '慎重型',
+    description: '均衡を崩しにくく、読みを過信せず終盤まで特殊カードを温存しやすい。',
+    exploitScale: 0.72,
+    exploration: 0.022,
+    earlySpecialBias: -0.035,
+    lateSpecialBias: 0.025,
+    jitter: 0.010,
+  },
+  aggressive: {
+    label: '攻撃型',
+    description: '相手の癖を強めに読んで、好機では特殊カードを早めに切りやすい。',
+    exploitScale: 1.18,
+    exploration: 0.028,
+    earlySpecialBias: 0.040,
+    lateSpecialBias: -0.010,
+    jitter: 0.012,
+  },
+  trickster: {
+    label: '撹乱型',
+    description: '均衡を軸にしつつ小さな揺らぎを混ぜ、タイミングを固定しにくい。',
+    exploitScale: 0.94,
+    exploration: 0.050,
+    earlySpecialBias: 0.000,
+    lateSpecialBias: 0.000,
+    jitter: 0.055,
+  },
+};
+
+function chooseCpuPersonalityKey() {
+  const keys = Object.keys(CPU_PERSONALITIES);
+  return keys[secureRandomInt(keys.length)];
+}
+
+function getCpuPersonality() {
+  return CPU_PERSONALITIES[cpuPersonality] || CPU_PERSONALITIES.cautious;
+}
 
 function createEmptyCpuStats() {
   return {
@@ -579,6 +632,7 @@ function chooseStrongCpuCardIndex() {
   if (citizenIndices.length === 0) return specialIndex;
 
   const model = estimatePlayerSpecialRate();
+  const personality = getCpuPersonality();
   const p = model.predicted;
   const citizensAfterTie = Math.max(0, citizenIndices.length - 1);
   const continuation = continuationValueForPlayer(playerSide, citizensAfterTie);
@@ -602,17 +656,28 @@ function chooseStrongCpuCardIndex() {
 
   // 予測が均衡点の近くなら無理に読みへ寄せず、差が明確なときだけ攻める。
   const signalStrength = Math.min(1, Math.abs(advantage) / 0.28);
-  const exploitStrength = model.confidence * signalStrength;
+  const exploitStrength = clamp(model.confidence * signalStrength * personality.exploitScale, 0, 0.96);
   const exploitTarget = direction > 0 ? 0.985 : 0.015;
 
-  // 最適混合を土台にするため、学習が外れても簡単には攻略されない。
+  // 最適混合を土台にするため、性格差があっても簡単には攻略されない。
   let specialRate = model.nashRate * (1 - exploitStrength)
     + exploitTarget * exploitStrength;
 
-  // ごく小さな探索成分を残し、プレイヤーがCPUの学習そのものを固定読みしにくくする。
-  const exploration = 0.035;
-  specialRate = specialRate * (1 - exploration) + model.nashRate * exploration;
-  specialRate = clamp(specialRate, 0.015, 0.985);
+  // 戦型ごとの「切り時」の癖。差は小さくし、最適混合から大きく外れないようにする。
+  const stageProgress = 1 - ((playerHand.length - 1) / 4); // 0=序盤寄り / 1=終盤
+  const stageBias = personality.earlySpecialBias * (1 - stageProgress)
+    + personality.lateSpecialBias * stageProgress;
+  specialRate += stageBias;
+
+  // 撹乱型を中心に、毎手ごく小さなランダム揺らぎを入れる。
+  if (personality.jitter > 0) {
+    specialRate += (Math.random() * 2 - 1) * personality.jitter;
+  }
+
+  // 戦型ごとの探索率。均衡点へ引き戻すことで強さを維持する。
+  specialRate = specialRate * (1 - personality.exploration)
+    + model.nashRate * personality.exploration;
+  specialRate = clamp(specialRate, 0.02, 0.98);
 
   if (Math.random() < specialRate) return specialIndex;
   return citizenIndices[Math.floor(Math.random() * citizenIndices.length)];
@@ -772,10 +837,12 @@ function startSeries(side) {
   matchResults = [];
   currentMatchLog = [];
   Object.assign(sessionCpuStats, createEmptyCpuStats());
+  cpuPersonality = chooseCpuPersonalityKey();
 
   setupScreen.classList.add('hidden');
   resultScreen.classList.add('hidden');
   gameScreen.classList.remove('hidden');
+  document.body.classList.add('game-active');
 
   if (AUDIO.bgmEnabled) startBgm();
   requestWakeLock();
@@ -817,7 +884,7 @@ async function runMatchIntro(sequenceId) {
 
   matchIntroTop.textContent = `MATCH ${currentMatch} / ${TOTAL_MATCHES}`;
   matchIntroMain.textContent = sideLabel(playerSide);
-  matchIntroSub.textContent = `${leadSideForCurrentPlay() === playerSide ? 'あなたが先手' : 'CPUが先手'} ・ 最強CPUとの読み合い`;
+  matchIntroSub.textContent = `${leadSideForCurrentPlay() === playerSide ? 'あなたが先手' : 'CPUが先手'} ・ 最強CPUは毎シリーズ戦型が変化`;
   matchIntro.classList.remove('hidden');
   sfxMatchStart();
   safeVibrate([14, 35, 18]);
@@ -855,11 +922,26 @@ function showSelectionTray(card) {
 
 function chooseHandCard(index) {
   if (inputLocked || index < 0 || index >= playerHand.length) return;
+  const changed = selectedHandIndex !== index;
   selectedHandIndex = index;
   const card = playerHand[index];
   showSelectionTray(card);
+  // 選択中は勝負枠には何も出さない。
+  // 選んだカードの確認は手札の浮き上がりと確認トレイだけで行い、
+  // 確定後にはじめて先手順に伏せカードを置く。
+  showPlaceholder(playerPlayedEl);
+  showPlaceholder(cpuPlayedEl);
   renderHand();
-  safeVibrate(10);
+  if (changed) {
+    sfxCardSelect();
+    safeVibrate(9);
+  }
+  const picked = playerHandEl.querySelector(`[data-index="${index}"]`);
+  if (picked) {
+    picked.classList.remove('is-pick-pop');
+    void picked.offsetWidth;
+    picked.classList.add('is-pick-pop');
+  }
   setMessage(`${CARD_INFO[card].label}を選択中。確定すると戻せません。`);
 }
 
@@ -964,10 +1046,14 @@ async function runCountdown(sequenceId) {
 }
 
 async function revealBothCards(playerCard, cpuCard, sequenceId) {
+  battleZone?.classList.add('is-revealing');
   playerPlayedEl.classList.add('flip-out');
   cpuPlayedEl.classList.add('flip-out');
   await wait(135);
-  if (sequenceId !== battleSequenceId) return false;
+  if (sequenceId !== battleSequenceId) {
+    battleZone?.classList.remove('is-revealing');
+    return false;
+  }
 
   showPlayedCard(playerPlayedEl, playerCard);
   showPlayedCard(cpuPlayedEl, cpuCard);
@@ -978,6 +1064,7 @@ async function revealBothCards(playerCard, cpuCard, sequenceId) {
   await wait(220);
   playerPlayedEl.classList.remove('flip-in');
   cpuPlayedEl.classList.remove('flip-in');
+  window.setTimeout(() => battleZone?.classList.remove('is-revealing'), paceMs(300, 0.55));
   return sequenceId === battleSequenceId;
 }
 
@@ -1087,7 +1174,12 @@ async function resolveChosenBattle(pending, resumed = false) {
     showCardBack(cpuPlayedEl, 'CPU');
     sfxCard();
   } else {
-    // CPU先手の裏面は resetBattleView() で先に置かれている。
+    // CPU先手でも、選択中にはCPUカードを見せず、確定後にここで伏せる。
+    showCardBack(cpuPlayedEl, 'CPU');
+    sfxCard();
+    setMessage('CPUが先にカードを伏せた。あなたが続く……');
+    await wait(430);
+    if (sequenceId !== battleSequenceId) return;
     showCardBack(playerPlayedEl, 'あなた');
     sfxCard();
     safeVibrate(20);
@@ -1209,12 +1301,16 @@ async function playCard(playerIndex) {
   const selectedButton = playerHandEl.querySelector(`[data-index="${playerIndex}"]`);
   playerHandEl.querySelectorAll('.hand-card').forEach((button) => { button.disabled = true; });
   if (selectedButton) {
-    selectedButton.classList.add('is-selected', 'is-chosen');
+    selectedButton.classList.remove('is-pick-pop', 'is-chosen');
+    selectedButton.classList.add('is-selected', 'is-committing');
     selectedButton.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   }
+  if (selectionTray) selectionTray.classList.add('is-confirming');
   if (selectionHint) selectionHint.textContent = 'カードを確定しました。勝負を開始します。';
-  safeVibrate(12);
-  await wait(180);
+  sfxCardConfirm();
+  safeVibrate([10, 18, 24]);
+  await wait(190);
+  if (selectionTray) selectionTray.classList.remove('is-confirming');
   selectedHandIndex = null;
 
   const cpuIndex = Number.isInteger(cpuPlannedIndex) ? cpuPlannedIndex : chooseStrongCpuCardIndex();
@@ -1237,7 +1333,16 @@ function confirmSelectedCard() {
 
 function cancelSelectedCard() {
   if (inputLocked) return;
+  sfxCardCancel();
+  safeVibrate(6);
   hideSelectionTray();
+  // 選び直し時は、選択前の勝負枠に戻す。
+  showPlaceholder(playerPlayedEl);
+  if (leadSideForCurrentPlay() === playerSide) {
+    showPlaceholder(cpuPlayedEl);
+  } else {
+    showCardBack(cpuPlayedEl, 'CPU');
+  }
   renderHand();
   setMessage(currentPickPrompt());
 }
@@ -1273,18 +1378,8 @@ function resetBattleView() {
   countdownOverlay.classList.add('hidden');
   countdownOverlay.textContent = '';
   showPlaceholder(playerPlayedEl);
-
-  const lead = leadSideForCurrentPlay();
-  const actor = lead === playerSide ? 'あなた' : 'CPU';
-
-  if (lead === playerSide) {
-    showPlaceholder(cpuPlayedEl);
-    setMessage(currentPickPrompt());
-  } else {
-    showCardBack(cpuPlayedEl, 'CPU');
-    setMessage(currentPickPrompt());
-    window.setTimeout(() => sfxCard(), paceMs(80, 0.75));
-  }
+  showPlaceholder(cpuPlayedEl);
+  setMessage(currentPickPrompt());
 }
 
 function updateStatus() {
@@ -1297,6 +1392,12 @@ function updateStatus() {
 
   const lead = leadSideForCurrentPlay();
   orderLabel.textContent = `${sideLabel(lead)}${lead === playerSide ? '（あなた）' : '（CPU）'}`;
+  if (compactMatchLabel) compactMatchLabel.textContent = `${currentMatch}/${TOTAL_MATCHES}`;
+  if (compactSideLabel) compactSideLabel.textContent = sideLabel(playerSide);
+  if (compactPlayLabel) compactPlayLabel.textContent = `${Math.min(playInMatch, 4)}/4`;
+  if (compactPlayerScore) compactPlayerScore.textContent = playerWins;
+  if (compactCpuScore) compactCpuScore.textContent = cpuWins;
+  if (compactLeadLabel) compactLeadLabel.textContent = lead === playerSide ? 'あなた' : 'CPU';
   renderSeriesProgress();
 }
 
@@ -1407,7 +1508,24 @@ function showSeriesResult() {
   }
 
   const records = loadRecords();
-  resultScore.innerHTML = `<span>FINAL SCORE</span><strong>${playerWins} − ${cpuWins}</strong><small>あなた　　　CPU</small><small class="lifetime-line">累計12戦マッチ：${records.series.played}戦 ${records.series.wins}勝 ${records.series.losses}敗 ${records.series.draws}分</small>`;
+  const roundMarks = Array.from({ length: TOTAL_MATCHES }, (_, i) => {
+    const value = matchResults[i];
+    const cls = value === 'win' ? 'final-win' : value === 'lose' ? 'final-lose' : 'final-empty';
+    return `<i class="${cls}" title="第${i + 1}戦">${i + 1}</i>`;
+  }).join('');
+  resultScore.innerHTML = `
+    <div class="series-final-tablet">
+      <span class="series-final-kicker">FINAL SCORE</span>
+      <div class="series-final-score"><b>${playerWins}</b><em>−</em><b>${cpuWins}</b></div>
+      <div class="series-final-names"><span>あなた</span><span>CPU</span></div>
+      <div class="series-final-rounds">${roundMarks}</div>
+      <div class="cpu-profile-reveal">
+        <span>CPU PROFILE</span>
+        <strong>${getCpuPersonality().label}</strong>
+        <small>${getCpuPersonality().description}</small>
+      </div>
+      <small class="lifetime-line">累計12戦マッチ：${records.series.played}戦 ${records.series.wins}勝 ${records.series.losses}敗 ${records.series.draws}分</small>
+    </div>`;
   retryBtn.textContent = 'もう一度抽選して対戦';
   resultScreen.classList.remove('hidden');
 }
@@ -1425,6 +1543,7 @@ function continueSeries() {
 
 function backToSetup() {
   battleSequenceId += 1;
+  cpuPersonality = null;
   if (victoryBurst) victoryBurst.classList.add('hidden');
   stopBgm();
   releaseWakeLock();
@@ -1433,6 +1552,7 @@ function backToSetup() {
   resultScreen.classList.add('hidden');
   gameScreen.classList.add('hidden');
   setupScreen.classList.remove('hidden');
+  document.body.classList.remove('game-active');
   hideSelectionTray();
   resetLotteryView();
   renderResumePanel();
@@ -1501,6 +1621,8 @@ const AUDIO = {
   compressor: null,
   timer: null,
   step: 0,
+  musicBaseGain: 0.36,
+  duckToken: 0,
 };
 
 function ensureAudio() {
@@ -1517,7 +1639,7 @@ function ensureAudio() {
     // v17.2: iPhoneでも聞き取りやすいよう、BGMと効果音を全体的に増幅。
     // コンプレッサーを最後段に入れて、複数音が重なった時のピークも抑える。
     AUDIO.master.gain.value = 0.95;
-    AUDIO.musicGain.gain.value = 0.36;
+    AUDIO.musicGain.gain.value = AUDIO.musicBaseGain;
     AUDIO.sfxGain.gain.value = 0.50;
 
     AUDIO.compressor.threshold.value = -10;
@@ -1558,43 +1680,124 @@ function tone(freq, duration = 0.12, type = 'square', volume = 0.18, when = 0, d
   osc.stop(start + duration + 0.02);
 }
 
+function noiseBurst(duration = 0.08, volume = 0.10, when = 0, destination = null, highpass = 0) {
+  const isMusic = destination === AUDIO.musicGain;
+  if (isMusic ? !AUDIO.bgmEnabled : !AUDIO.sfxEnabled) return;
+  if (!ensureAudio()) return;
+  const ctx = AUDIO.ctx;
+  const start = ctx.currentTime + when;
+  const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i += 1) {
+    const decay = Math.pow(1 - i / length, 2.2);
+    data[i] = (Math.random() * 2 - 1) * decay;
+  }
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume), start + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  let node = source;
+  if (highpass > 0) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = highpass;
+    source.connect(filter);
+    node = filter;
+  }
+  node.connect(gain);
+  gain.connect(destination || AUDIO.sfxGain);
+  source.start(start);
+  source.stop(start + duration + 0.02);
+}
+
+function metallicHit(baseFreq = 180, volume = 0.10, when = 0) {
+  tone(baseFreq, 0.11, 'triangle', volume, when);
+  tone(baseFreq * 2.17, 0.055, 'square', volume * 0.50, when + 0.014);
+  tone(baseFreq * 3.92, 0.035, 'sine', volume * 0.34, when + 0.025);
+  noiseBurst(0.045, volume * 0.48, when, null, 1100);
+}
+
+function lowImpact(volume = 0.13, when = 0) {
+  tone(64, 0.15, 'sine', volume, when);
+  tone(92, 0.09, 'triangle', volume * 0.72, when + 0.012);
+  noiseBurst(0.075, volume * 0.72, when, null, 90);
+}
+
+function duckMusic(depth = 0.30, hold = 0.18, recover = 0.34) {
+  if (!AUDIO.bgmEnabled || !ensureAudio() || !AUDIO.musicGain) return;
+  const ctx = AUDIO.ctx;
+  const gain = AUDIO.musicGain.gain;
+  const token = ++AUDIO.duckToken;
+  const now = ctx.currentTime;
+  const target = Math.max(0.025, AUDIO.musicBaseGain * depth);
+  gain.cancelScheduledValues(now);
+  gain.setValueAtTime(Math.max(0.0001, gain.value), now);
+  gain.linearRampToValueAtTime(target, now + 0.035);
+  gain.setValueAtTime(target, now + hold);
+  gain.linearRampToValueAtTime(AUDIO.musicBaseGain, now + hold + recover);
+  window.setTimeout(() => {
+    if (token !== AUDIO.duckToken || !AUDIO.musicGain) return;
+    AUDIO.musicGain.gain.value = AUDIO.musicBaseGain;
+  }, Math.ceil((hold + recover + 0.08) * 1000));
+}
+
+function bgmTensionStage() {
+  const play = Number(playInMatch || 1);
+  if (play >= 4 || playerHand.length <= 2) return 2;
+  if (play >= 3 || playerHand.length <= 3) return 1;
+  return 0;
+}
+
 function bgmTick() {
   if (!AUDIO.bgmEnabled || !AUDIO.ctx) return;
 
-  // v17.3: 勝負中専用の緊張感BGM。
-  // 低い脈動、半音の不協和、短い時計音を組み合わせ、
-  // 手が進むほど少しずつ高音レイヤーを増やす。
-  const bass = [73.42, 73.42, 69.30, 77.78, 73.42, 82.41, 69.30, 65.41];
+  // v18.4: 3段階で緊張が増すBGM。
+  // 序盤＝低い脈動、中盤＝金属的な刻み、終盤＝鼓動・不協和・高音を増やす。
+  const stage = bgmTensionStage();
+  const bassByStage = [
+    [73.42, 73.42, 69.30, 77.78, 73.42, 82.41, 69.30, 65.41],
+    [73.42, 69.30, 77.78, 73.42, 65.41, 69.30, 82.41, 77.78],
+    [69.30, 73.42, 65.41, 77.78, 69.30, 82.41, 65.41, 61.74],
+  ];
   const tensionLead = [146.83, 0, 155.56, 0, 146.83, 0, 138.59, 0,
                        146.83, 0, 164.81, 0, 155.56, 0, 138.59, 0];
   const i = AUDIO.step % 16;
-  const playTension = Math.max(0, Math.min(3, (playInMatch || 1) - 1));
+  const bass = bassByStage[stage];
 
-  // 暗い低音のオスティナート。
   if (i % 2 === 0) {
-    tone(bass[(i / 2) % bass.length], 0.30, 'triangle', 0.19, 0, AUDIO.musicGain);
+    tone(bass[(i / 2) % bass.length], 0.30 - stage * 0.025, 'triangle', 0.17 + stage * 0.018, 0, AUDIO.musicGain);
   }
 
-  // 心拍のような二連パルス。
-  if (i === 0 || i === 8) {
-    tone(98.00, 0.085, 'sawtooth', 0.12, 0, AUDIO.musicGain);
-    tone(116.54, 0.065, 'sawtooth', 0.085, 0.10, AUDIO.musicGain);
+  // 二連の鼓動。終盤ほど太く・近くなる。
+  if (i === 0 || i === 8 || (stage === 2 && i === 12)) {
+    tone(stage === 2 ? 82.41 : 98.00, 0.09, 'sawtooth', 0.10 + stage * 0.018, 0, AUDIO.musicGain);
+    tone(stage === 2 ? 92.50 : 116.54, 0.065, 'sawtooth', 0.072 + stage * 0.012, stage === 2 ? 0.075 : 0.10, AUDIO.musicGain);
   }
 
-  // 半音を含む不協和音。後半の手ほど少し目立たせる。
   if (tensionLead[i]) {
-    tone(tensionLead[i], 0.13, 'square', 0.050 + playTension * 0.009, 0.025, AUDIO.musicGain);
+    tone(tensionLead[i], 0.13, 'square', 0.046 + stage * 0.012, 0.025, AUDIO.musicGain);
   }
 
-  // 時計の針のような短いクリック。
+  // 時計／金属片のような刻み。
   if (i % 2 === 1) {
-    tone(1174.66, 0.018, 'square', 0.018 + playTension * 0.004, 0, AUDIO.musicGain);
+    tone(stage === 0 ? 1174.66 : stage === 1 ? 1318.51 : 1480.00,
+         0.016, 'square', 0.015 + stage * 0.006, 0, AUDIO.musicGain);
   }
 
-  // 3手目以降は高い不穏なレイヤーを追加して緊張を上げる。
-  if (playTension >= 2 && (i === 5 || i === 13)) {
-    tone(311.13, 0.22, 'sine', 0.035 + playTension * 0.006, 0, AUDIO.musicGain);
-    tone(329.63, 0.20, 'sine', 0.024 + playTension * 0.005, 0.035, AUDIO.musicGain);
+  if (stage >= 1 && (i === 5 || i === 13)) {
+    tone(311.13, 0.22, 'sine', 0.038 + stage * 0.008, 0, AUDIO.musicGain);
+    tone(329.63, 0.20, 'sine', 0.027 + stage * 0.006, 0.035, AUDIO.musicGain);
+  }
+
+  // 最終局面だけ、低い金属音と半音衝突を加える。
+  if (stage === 2 && (i === 3 || i === 11)) {
+    tone(55.00, 0.26, 'sine', 0.075, 0, AUDIO.musicGain);
+    tone(207.65, 0.15, 'triangle', 0.040, 0.02, AUDIO.musicGain);
+    tone(220.00, 0.15, 'triangle', 0.035, 0.035, AUDIO.musicGain);
+    noiseBurst(0.025, 0.010, 0.02, AUDIO.musicGain, 2200);
   }
 
   AUDIO.step += 1;
@@ -1617,73 +1820,117 @@ function stopBgm() {
 }
 
 function sfxMatchStart() {
-  tone(98, 0.18, 'sawtooth', 0.08);
-  tone(146.83, 0.16, 'triangle', 0.09, 0.12);
-  tone(220, 0.20, 'triangle', 0.07, 0.25);
+  lowImpact(0.095);
+  metallicHit(146.83, 0.075, 0.10);
+  tone(220, 0.24, 'triangle', 0.060, 0.23);
 }
 
 function sfxSeriesWin() {
-  tone(220, 0.13, 'triangle', 0.12);
-  tone(277.18, 0.13, 'triangle', 0.11, 0.12);
-  tone(329.63, 0.13, 'triangle', 0.11, 0.24);
-  tone(440, 0.18, 'triangle', 0.13, 0.36);
-  tone(659.25, 0.42, 'sine', 0.10, 0.52);
+  lowImpact(0.16);
+  metallicHit(164.81, 0.13, 0.08);
+  tone(220, 0.18, 'triangle', 0.12, 0.12);
+  tone(277.18, 0.20, 'triangle', 0.11, 0.25);
+  tone(329.63, 0.24, 'triangle', 0.11, 0.39);
+  tone(440, 0.48, 'sine', 0.12, 0.56);
+  tone(659.25, 0.72, 'sine', 0.070, 0.74);
+  noiseBurst(0.10, 0.065, 0.05, null, 900);
 }
 
 function sfxSeriesLose() {
-  tone(196, 0.16, 'sawtooth', 0.08);
-  tone(164.81, 0.18, 'sawtooth', 0.08, 0.14);
-  tone(130.81, 0.22, 'sawtooth', 0.075, 0.30);
-  tone(98, 0.42, 'triangle', 0.07, 0.46);
+  lowImpact(0.13);
+  tone(196, 0.20, 'sawtooth', 0.085, 0.10);
+  tone(164.81, 0.22, 'sawtooth', 0.082, 0.25);
+  tone(130.81, 0.28, 'sawtooth', 0.078, 0.42);
+  tone(82.41, 0.52, 'sine', 0.080, 0.62);
+  noiseBurst(0.12, 0.055, 0.08, null, 180);
 }
 
 function sfxCountdown(number) {
-  const frequencies = { '3': 330, '2': 370, '1': 415 };
-  tone(frequencies[number] || 330, 0.10, 'square', 0.11);
-  tone((frequencies[number] || 330) / 2, 0.12, 'triangle', 0.07, 0.015);
+  const frequencies = { '3': 196, '2': 207.65, '1': 220 };
+  const f = frequencies[number] || 196;
+  metallicHit(f, 0.085);
+  tone(f / 2, 0.15, 'sine', 0.080, 0.005);
 }
 
 function sfxOpen() {
-  tone(110, 0.10, 'sawtooth', 0.10);
-  tone(440, 0.14, 'square', 0.14, 0.04);
-  tone(659.25, 0.16, 'triangle', 0.12, 0.09);
+  // BGMを一瞬沈めてから、低い衝撃＋金属音を前面に出す。
+  duckMusic(0.17, 0.20, 0.38);
+  lowImpact(0.19);
+  noiseBurst(0.095, 0.12, 0.018, null, 120);
+  metallicHit(220, 0.15, 0.045);
+  tone(659.25, 0.18, 'triangle', 0.090, 0.105);
 }
 
 function sfxCard() {
-  tone(185, 0.07, 'square', 0.12);
-  tone(247, 0.06, 'square', 0.09, 0.045);
+  // 古い金属板／厚いカードを卓上へ置くイメージ。
+  lowImpact(0.10);
+  noiseBurst(0.050, 0.080, 0.004, null, 160);
+  metallicHit(154, 0.075, 0.018);
+}
+
+function sfxCardSelect() {
+  // 手札へ指を置いた瞬間。重すぎない低い金属の触感。
+  tone(118, 0.055, 'triangle', 0.050);
+  metallicHit(236, 0.045, 0.012);
+  noiseBurst(0.028, 0.035, 0.006, null, 1300);
+}
+
+function sfxCardConfirm() {
+  // 確定時は「浮いたカードが卓へ沈み、ロックされる」感触。
+  duckMusic(0.72, 0.055, 0.18);
+  lowImpact(0.115);
+  noiseBurst(0.050, 0.060, 0.008, null, 120);
+  metallicHit(132, 0.082, 0.024);
+  tone(264, 0.075, 'triangle', 0.055, 0.055);
+}
+
+function sfxCardCancel() {
+  // 選び直しは短く軽く。勝負音より前に出さない。
+  tone(210, 0.045, 'triangle', 0.035);
+  tone(164, 0.055, 'triangle', 0.028, 0.028);
 }
 
 function sfxReveal() {
-  tone(196, 0.08, 'triangle', 0.13);
-  tone(293.66, 0.10, 'triangle', 0.11, 0.07);
+  metallicHit(196, 0.095);
+  noiseBurst(0.060, 0.070, 0.015, null, 800);
+  tone(293.66, 0.14, 'triangle', 0.075, 0.055);
 }
 
 function sfxDraw() {
-  tone(164.81, 0.12, 'triangle', 0.10);
-  tone(164.81, 0.12, 'triangle', 0.08, 0.12);
+  // 乾いた短い音。勝敗より余韻を抑える。
+  noiseBurst(0.045, 0.070, 0, null, 1200);
+  metallicHit(132, 0.060, 0.008);
+  tone(132, 0.09, 'triangle', 0.050, 0.08);
 }
 
 function sfxWin() {
-  tone(220, 0.12, 'square', 0.16);
-  tone(277.18, 0.12, 'square', 0.14, 0.12);
-  tone(329.63, 0.18, 'square', 0.14, 0.24);
-  tone(440, 0.30, 'triangle', 0.15, 0.38);
+  duckMusic(0.46, 0.11, 0.30);
+  lowImpact(0.13);
+  metallicHit(185, 0.12, 0.035);
+  tone(246.94, 0.17, 'triangle', 0.10, 0.12);
+  tone(329.63, 0.23, 'triangle', 0.105, 0.25);
+  tone(493.88, 0.42, 'sine', 0.080, 0.40);
 }
 
 function sfxSpecialVictory() {
-  tone(110, 0.16, 'sawtooth', 0.12);
-  tone(220, 0.10, 'square', 0.13, 0.08);
-  tone(329.63, 0.12, 'square', 0.14, 0.16);
-  tone(440, 0.16, 'triangle', 0.14, 0.28);
-  tone(659.25, 0.22, 'triangle', 0.15, 0.42);
-  tone(880, 0.34, 'sine', 0.10, 0.58);
+  duckMusic(0.20, 0.22, 0.46);
+  lowImpact(0.19);
+  noiseBurst(0.12, 0.11, 0.02, null, 100);
+  metallicHit(110, 0.14, 0.06);
+  metallicHit(220, 0.13, 0.18);
+  tone(329.63, 0.18, 'triangle', 0.12, 0.30);
+  tone(440, 0.24, 'triangle', 0.13, 0.44);
+  tone(659.25, 0.34, 'sine', 0.11, 0.62);
+  tone(880, 0.48, 'sine', 0.075, 0.82);
 }
 
 function sfxLose() {
-  tone(220, 0.14, 'sawtooth', 0.10);
-  tone(185, 0.16, 'sawtooth', 0.10, 0.12);
-  tone(146.83, 0.30, 'sawtooth', 0.09, 0.26);
+  duckMusic(0.58, 0.08, 0.28);
+  lowImpact(0.11);
+  tone(196, 0.17, 'sawtooth', 0.080, 0.06);
+  tone(164.81, 0.20, 'sawtooth', 0.080, 0.18);
+  tone(130.81, 0.34, 'triangle', 0.082, 0.34);
+  noiseBurst(0.085, 0.055, 0.08, null, 180);
 }
 
 function updateAudioButtons() {

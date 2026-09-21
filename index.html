@@ -16,7 +16,7 @@
   <link rel="preload" as="image" href="images/citizen.jpeg" />
   <link rel="preload" as="image" href="images/emperor.jpeg" />
   <link rel="preload" as="image" href="images/slave.jpeg" />
-  <link rel="stylesheet" href="style.css?v=17.3" />
+  <link rel="stylesheet" href="style.css?v=18.6.4" />
 </head>
 <body>
   <main class="app-shell">
@@ -36,10 +36,14 @@
 
     <section id="setupScreen" class="panel setup-panel">
       <section class="title-hero" aria-labelledby="mainTitle">
-        <div class="title-card-fan" aria-hidden="true">
-          <div class="fan-card fan-card-left"><img src="images/emperor.jpeg" alt=""></div>
-          <div class="fan-card fan-card-center"><img src="images/back.jpeg" alt=""></div>
-          <div class="fan-card fan-card-right"><img src="images/slave.jpeg" alt=""></div>
+        <div class="title-battle-stage" aria-hidden="true">
+          <div class="battle-banner battle-banner-emperor"></div>
+          <div class="battle-banner battle-banner-slave"></div>
+          <div class="battle-spark-core"></div>
+          <div class="battle-spark-rays"></div>
+          <div class="battle-floor"></div>
+          <div class="battle-card battle-card-emperor"><img src="images/emperor.jpeg" alt=""></div>
+          <div class="battle-card battle-card-slave"><img src="images/slave.jpeg" alt=""></div>
         </div>
         <div class="title-copy">
           <p class="title-kicker">PSYCHOLOGICAL CARD BATTLE</p>
@@ -49,10 +53,34 @@
         </div>
       </section>
 
-      <div class="start-heading-wrap">
-        <p class="section-kicker">START SIDE LOTTERY</p>
-        <h2 class="start-heading">最初の陣営を抽選する</h2>
-      </div>
+      <section id="sideLottery" class="side-lottery" aria-labelledby="lotteryTitle">
+        <div class="lottery-copy">
+          <p class="section-kicker">50 / 50 RANDOM DRAW</p>
+          <h3 id="lotteryTitle">皇帝か、奴隷か。</h3>
+          <p>ボタンを押すと最初の3試合で使う陣営を抽選します。</p>
+        </div>
+
+        <button id="lotteryBtn" class="lottery-btn" type="button">陣営を抽選する</button>
+
+        <div id="lotteryStage" class="lottery-stage" aria-hidden="true">
+          <div id="lotteryCard" class="lottery-card">
+            <div class="lottery-card-inner">
+              <div class="lottery-face lottery-back"><img src="images/back.jpeg" alt=""></div>
+              <div class="lottery-face lottery-front"><img id="lotteryResultImage" src="images/back.jpeg" alt="抽選前のE-CARD 裏面"></div>
+            </div>
+          </div>
+          <div class="lottery-aura"></div>
+        </div>
+
+        <div id="lotteryResult" class="lottery-result" role="status" aria-live="assertive">
+          <span>START SIDE</span>
+          <strong id="lotteryResultLabel">抽選前</strong>
+          <small id="lotteryResultSub">皇帝側 50% ／ 奴隷側 50%</small>
+        </div>
+
+      </section>
+
+
       <p class="muted">最初の陣営は皇帝側・奴隷側を<strong>50%ずつ</strong>でランダム抽選します。決定後は全12試合を行い、3試合ごとに陣営を交代します。</p>
       <p class="series-note"><strong>12戦マッチ</strong>　1〜3戦 → 交代 → 4〜6戦 → 交代 → 7〜9戦 → 交代 → 10〜12戦<br><small>各試合：1・3手目は皇帝側が先出し／2・4手目は奴隷側が先出し</small></p>
       <p class="cpu-note"><strong>CPU強度：最強</strong>　ゲーム理論の最適混合を土台に、残り手札・役割・先手後手・過去と直近の出し方を学習します。CPUの手はあなたが選ぶ前に確定するため、後出しはしません。</p>
@@ -112,31 +140,7 @@
         <p class="stats-note">戦績はこの端末のブラウザ内に保存されます。</p>
       </section>
 
-      <section id="sideLottery" class="side-lottery" aria-labelledby="lotteryTitle">
-        <div class="lottery-copy">
-          <p class="section-kicker">50 / 50 RANDOM DRAW</p>
-          <h3 id="lotteryTitle">皇帝か、奴隷か。</h3>
-          <p>ボタンを押すと最初の3試合で使う陣営を抽選します。</p>
-        </div>
 
-        <div id="lotteryStage" class="lottery-stage" aria-hidden="true">
-          <div id="lotteryCard" class="lottery-card">
-            <div class="lottery-card-inner">
-              <div class="lottery-face lottery-back"><img src="images/back.jpeg" alt=""></div>
-              <div class="lottery-face lottery-front"><img id="lotteryResultImage" src="images/back.jpeg" alt="抽選前のE-CARD 裏面"></div>
-            </div>
-          </div>
-          <div class="lottery-aura"></div>
-        </div>
-
-        <div id="lotteryResult" class="lottery-result" role="status" aria-live="assertive">
-          <span>START SIDE</span>
-          <strong id="lotteryResultLabel">抽選前</strong>
-          <small id="lotteryResultSub">皇帝側 50% ／ 奴隷側 50%</small>
-        </div>
-
-        <button id="lotteryBtn" class="lottery-btn" type="button">陣営を抽選する</button>
-      </section>
 
       <div class="rules-mini">
         <span>皇帝 ＞ 市民</span>
@@ -146,6 +150,17 @@
     </section>
 
     <section id="gameScreen" class="game hidden" aria-live="polite">
+      <div class="compact-match-bar" aria-label="現在の試合情報">
+        <span>MATCH <b id="compactMatchLabel">1/12</b></span>
+        <i aria-hidden="true"></i>
+        <span id="compactSideLabel">皇帝側</span>
+        <i aria-hidden="true"></i>
+        <span>PLAY <b id="compactPlayLabel">1/4</b></span>
+        <i aria-hidden="true"></i>
+        <span class="compact-score"><b id="compactPlayerScore">0</b>−<b id="compactCpuScore">0</b></span>
+        <i aria-hidden="true"></i>
+        <span>先手 <b id="compactLeadLabel">あなた</b></span>
+      </div>
       <section class="series-board" aria-label="12戦の進行状況">
         <div class="series-stat">
           <span>MATCH</span>
@@ -366,6 +381,6 @@
     </div>
   </main>
 
-  <script src="script.js?v=17.3"></script>
+  <script src="script.js?v=18.6.4"></script>
 </body>
 </html>
