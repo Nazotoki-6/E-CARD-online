@@ -1,0 +1,27 @@
+{
+  "name": "E-CARD ONLINE",
+  "short_name": "E-CARD",
+  "description": "皇帝・市民・奴隷のカードで最強CPUと戦う心理戦ブラウザゲーム。開始陣営を50%抽選し、3試合ごとに皇帝側・奴隷側を交代する12戦。最強CPU・演出強化・途中保存・オフライン対応。",
+  "lang": "ja",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05080c",
+  "theme_color": "#071018",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

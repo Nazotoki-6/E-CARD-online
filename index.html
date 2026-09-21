@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#071018" />
+  <meta name="application-name" content="E-CARD ONLINE" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="E-CARD" />
+  <title>E-CARD ONLINE</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="preload" as="image" href="images/back.jpeg" />
+  <link rel="preload" as="image" href="images/citizen.jpeg" />
+  <link rel="preload" as="image" href="images/emperor.jpeg" />
+  <link rel="preload" as="image" href="images/slave.jpeg" />
+  <link rel="stylesheet" href="style.css?v=17.0" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">E-CARD ONLINE</p>
+        <h1>皇帝・市民・奴隷</h1>
+      </div>
+      <div class="topbar-actions">
+        <button id="helpBtn" class="ghost-btn compact-btn" type="button">？ 遊び方</button>
+        <button id="audioBtn" class="ghost-btn audio-btn is-on" type="button" aria-pressed="true">♪ BGM ON</button>
+        <button id="sfxBtn" class="ghost-btn audio-btn is-on" type="button" aria-pressed="true">🔊 SE ON</button>
+        <button id="speedBtn" class="ghost-btn speed-btn" type="button" aria-pressed="false">⏩ 高速 OFF</button>
+        <button id="resetBtn" class="ghost-btn" type="button">タイトルへ</button>
+      </div>
+    </header>
+
+    <section id="setupScreen" class="panel setup-panel">
+      <section class="title-hero" aria-labelledby="mainTitle">
+        <div class="title-card-fan" aria-hidden="true">
+          <div class="fan-card fan-card-left"><img src="images/emperor.jpeg" alt=""></div>
+          <div class="fan-card fan-card-center"><img src="images/back.jpeg" alt=""></div>
+          <div class="fan-card fan-card-right"><img src="images/slave.jpeg" alt=""></div>
+        </div>
+        <div class="title-copy">
+          <p class="title-kicker">PSYCHOLOGICAL CARD BATTLE</p>
+          <h2 id="mainTitle">E-CARD <span>ONLINE</span></h2>
+          <p class="title-tagline">皇帝か、奴隷か。<br>相手の一手を読み切れ。</p>
+          <div class="title-rule" aria-hidden="true"><span></span><b>12 MATCH SERIES</b><span></span></div>
+        </div>
+      </section>
+
+      <div class="start-heading-wrap">
+        <p class="section-kicker">START SIDE LOTTERY</p>
+        <h2 class="start-heading">最初の陣営を抽選する</h2>
+      </div>
+      <p class="muted">最初の陣営は皇帝側・奴隷側を<strong>50%ずつ</strong>でランダム抽選します。決定後は全12試合を行い、3試合ごとに陣営を交代します。</p>
+      <p class="series-note"><strong>12戦マッチ</strong>　1〜3戦 → 交代 → 4〜6戦 → 交代 → 7〜9戦 → 交代 → 10〜12戦<br><small>各試合：1・3手目は皇帝側が先出し／2・4手目は奴隷側が先出し</small></p>
+      <p class="cpu-note"><strong>CPU強度：最強</strong>　ゲーム理論の最適混合を土台に、残り手札・役割・先手後手・過去と直近の出し方を学習します。CPUの手はあなたが選ぶ前に確定するため、後出しはしません。</p>
+      <p class="sound-note">BGMと効果音は個別にON/OFF可能。3・2・1カウントダウン・同時公開・勝敗演出・高速モードにも対応。</p>
+      <div class="pwa-row">
+        <span id="offlineStatus" class="offline-status">オフライン対応</span>
+        <button id="installBtn" class="install-btn hidden" type="button">ホーム画面に追加</button>
+      </div>
+
+      <section id="resumePanel" class="resume-panel hidden" aria-live="polite">
+        <div>
+          <strong>途中の12戦マッチがあります</strong>
+          <span id="resumeSummary">保存データを読み込み中…</span>
+        </div>
+        <div class="resume-actions">
+          <button id="resumeBtn" class="primary-btn" type="button">続きから</button>
+          <button id="discardResumeBtn" class="ghost-btn" type="button">破棄</button>
+        </div>
+      </section>
+
+      <section class="stats-panel" aria-labelledby="statsTitle">
+        <div class="stats-heading-row">
+          <div>
+            <p class="stats-kicker">LOCAL RECORD</p>
+            <h3 id="statsTitle">対・最強CPU 戦績</h3>
+          </div>
+          <button id="statsResetBtn" class="stats-reset-btn" type="button">戦績をリセット</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card stat-card-wide">
+            <span>12戦マッチ</span>
+            <strong id="seriesRecordLabel">0戦 0勝 0敗 0分</strong>
+            <small id="seriesWinRateLabel">勝率 --</small>
+          </div>
+          <div class="stat-card">
+            <span>個別試合</span>
+            <strong id="matchRecordLabel">0戦 0勝 0敗</strong>
+            <small id="matchWinRateLabel">勝率 --</small>
+          </div>
+          <div class="stat-card">
+            <span>連勝</span>
+            <strong id="streakLabel">現在 0</strong>
+            <small id="bestStreakLabel">最高 0連勝</small>
+          </div>
+          <div class="stat-card">
+            <span>皇帝側</span>
+            <strong id="emperorRateLabel">--</strong>
+            <small id="emperorRecordLabel">0勝 / 0戦</small>
+          </div>
+          <div class="stat-card">
+            <span>奴隷側</span>
+            <strong id="slaveRateLabel">--</strong>
+            <small id="slaveRecordLabel">0勝 / 0戦</small>
+          </div>
+        </div>
+        <p class="stats-note">戦績はこの端末のブラウザ内に保存されます。</p>
+      </section>
+
+      <section id="sideLottery" class="side-lottery" aria-labelledby="lotteryTitle">
+        <div class="lottery-copy">
+          <p class="section-kicker">50 / 50 RANDOM DRAW</p>
+          <h3 id="lotteryTitle">皇帝か、奴隷か。</h3>
+          <p>ボタンを押すと最初の3試合で使う陣営を抽選します。</p>
+        </div>
+
+        <div id="lotteryStage" class="lottery-stage" aria-hidden="true">
+          <div id="lotteryCard" class="lottery-card">
+            <div class="lottery-card-inner">
+              <div class="lottery-face lottery-back"><img src="images/back.jpeg" alt=""></div>
+              <div class="lottery-face lottery-front"><img id="lotteryResultImage" src="images/emperor.jpeg" alt=""></div>
+            </div>
+          </div>
+          <div class="lottery-aura"></div>
+        </div>
+
+        <div id="lotteryResult" class="lottery-result" role="status" aria-live="assertive">
+          <span>START SIDE</span>
+          <strong id="lotteryResultLabel">抽選前</strong>
+          <small id="lotteryResultSub">皇帝側 50% ／ 奴隷側 50%</small>
+        </div>
+
+        <button id="lotteryBtn" class="lottery-btn" type="button">陣営を抽選する</button>
+      </section>
+
+      <div class="rules-mini">
+        <span>皇帝 ＞ 市民</span>
+        <span>市民 ＞ 奴隷</span>
+        <span>奴隷 ＞ 皇帝</span>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="game hidden" aria-live="polite">
+      <section class="series-board" aria-label="12戦の進行状況">
+        <div class="series-stat">
+          <span>MATCH</span>
+          <strong id="matchLabel">1 / 12</strong>
+        </div>
+        <div class="series-score">
+          <span>SCORE</span>
+          <strong><b id="playerScoreLabel">0</b><i>−</i><b id="cpuScoreLabel">0</b></strong>
+          <small>あなた　　CPU</small>
+        </div>
+        <div class="series-stat align-right">
+          <span>GROUP</span>
+          <strong id="groupLabel">1 / 4</strong>
+        </div>
+      </section>
+
+      <div id="seriesProgress" class="series-progress" aria-label="試合結果"></div>
+
+      <div id="matchIntro" class="match-intro hidden" aria-live="assertive">
+        <div class="match-intro-inner">
+          <p id="matchIntroTop">MATCH 1 / 12</p>
+          <strong id="matchIntroMain">皇帝側</strong>
+          <span id="matchIntroSub">最強CPUとの読み合い</span>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div>
+          <span class="status-label">あなた</span>
+          <strong id="playerRoleLabel">-</strong>
+        </div>
+        <div class="round-box">
+          <span>PLAY</span>
+          <strong id="roundLabel">1 / 4</strong>
+        </div>
+        <div class="align-right">
+          <span class="status-label">CPU</span>
+          <strong id="cpuRoleLabel">-</strong><span class="cpu-max-badge">最強</span>
+        </div>
+      </div>
+
+      <div class="order-bar">先に伏せる側：<strong id="orderLabel">皇帝側</strong></div>
+      <div id="cpuLockLabel" class="cpu-lock-label">🔒 CPUカード確定済み</div>
+
+      <section id="battleZone" class="battle-zone">
+        <div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"></div>
+        <div class="battle-side">
+          <p>あなた</p>
+          <div id="playerPlayed" class="played-card placeholder">?</div>
+        </div>
+
+        <div class="versus">VS</div>
+
+        <div class="battle-side">
+          <p>CPU</p>
+          <div id="cpuPlayed" class="played-card">
+            <img src="images/back.jpeg" alt="E-CARD 裏面" />
+          </div>
+        </div>
+      </section>
+
+      <div id="messageBox" class="message-box">カードを選んでください。</div>
+
+      <section id="selectionTray" class="selection-tray hidden" aria-live="polite">
+        <div id="selectionPreview" class="selection-preview">
+          <img src="images/back.jpeg" alt="選択中のカード">
+        </div>
+        <div class="selection-copy">
+          <span>選択中のカード</span>
+          <strong id="selectionName">-</strong>
+          <small id="selectionHint">カードを1枚選ぶと、ここに表示されます。</small>
+        </div>
+        <div class="selection-actions">
+          <button id="confirmCardBtn" class="primary-btn" type="button">このカードで勝負する</button>
+          <button id="cancelCardBtn" class="ghost-btn" type="button">選び直す</button>
+        </div>
+      </section>
+
+      <details class="match-log-panel">
+        <summary>この試合のログ</summary>
+        <div id="matchLog" class="match-log"><p>まだカードは出されていません。</p></div>
+      </details>
+
+      <section class="hand-section">
+        <div class="hand-title-row">
+          <h2>あなたの手札</h2>
+          <div class="hand-meta"><span class="privacy-badge" title="引き分け後、残った手札の位置を毎回ランダムに並べ替えます">位置は毎手ランダム</span><span id="remainingLabel">残り5枚</span></div>
+        </div>
+        <div id="playerHand" class="hand"></div>
+      </section>
+    </section>
+
+    <section id="helpScreen" class="result-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="result-card help-card">
+        <p class="eyebrow">HOW TO PLAY</p>
+        <h2 id="helpTitle">遊び方</h2>
+        <div class="help-body help-guide">
+          <section class="guide-section guide-section-strong" aria-labelledby="guidePowerTitle">
+            <div class="guide-heading">
+              <span class="guide-number">1</span>
+              <div><small>BASIC RULE</small><h3 id="guidePowerTitle">3種類のカードの強さ</h3></div>
+            </div>
+            <div class="rule-cycle" aria-label="皇帝は市民に勝ち、市民は奴隷に勝ち、奴隷は皇帝に勝つ">
+              <div class="rule-card-mini"><img src="images/emperor.jpeg" alt="皇帝カード"><strong>皇帝</strong><span>市民に勝つ</span></div>
+              <div class="rule-arrow"><b>▶</b><small>勝つ</small></div>
+              <div class="rule-card-mini"><img src="images/citizen.jpeg" alt="市民カード"><strong>市民</strong><span>奴隷に勝つ</span></div>
+              <div class="rule-arrow"><b>▶</b><small>勝つ</small></div>
+              <div class="rule-card-mini"><img src="images/slave.jpeg" alt="奴隷カード"><strong>奴隷</strong><span>皇帝に勝つ</span></div>
+            </div>
+            <div class="rule-return"><span>奴隷は皇帝に勝つ</span><b>↩</b></div>
+            <p class="guide-note"><strong>市民 vs 市民</strong> は引き分け。両方を捨てて次のカードへ進みます。</p>
+          </section>
+
+          <section class="guide-section" aria-labelledby="guideHandTitle">
+            <div class="guide-heading">
+              <span class="guide-number">2</span>
+              <div><small>YOUR HAND</small><h3 id="guideHandTitle">1試合の手札</h3></div>
+            </div>
+            <div class="hand-rule-grid">
+              <div class="hand-rule-side emperor-side">
+                <strong>皇帝側</strong>
+                <div class="hand-icons"><img src="images/emperor.jpeg" alt="皇帝"><span>＋</span><img src="images/citizen.jpeg" alt="市民"><b>×4</b></div>
+              </div>
+              <div class="hand-rule-vs">VS</div>
+              <div class="hand-rule-side slave-side">
+                <strong>奴隷側</strong>
+                <div class="hand-icons"><img src="images/slave.jpeg" alt="奴隷"><span>＋</span><img src="images/citizen.jpeg" alt="市民"><b>×4</b></div>
+              </div>
+            </div>
+            <p class="guide-note">皇帝か奴隷が絡んで勝敗がついた時点で、その試合は終了します。</p>
+          </section>
+
+          <section class="guide-section" aria-labelledby="guideTurnTitle">
+            <div class="guide-heading">
+              <span class="guide-number">3</span>
+              <div><small>TURN ORDER</small><h3 id="guideTurnTitle">先に伏せる側</h3></div>
+            </div>
+            <div class="turn-order-grid">
+              <div><span>1手目</span><strong>皇帝側</strong></div>
+              <div><span>2手目</span><strong>奴隷側</strong></div>
+              <div><span>3手目</span><strong>皇帝側</strong></div>
+              <div><span>4手目</span><strong>奴隷側</strong></div>
+            </div>
+            <p class="guide-note">4手すべてが市民同士なら、残りは必ず皇帝 vs 奴隷になるため、<strong>奴隷側の勝利が自動確定</strong>します。</p>
+          </section>
+
+          <section class="guide-section" aria-labelledby="guideSeriesTitle">
+            <div class="guide-heading">
+              <span class="guide-number">4</span>
+              <div><small>12 MATCH SERIES</small><h3 id="guideSeriesTitle">12戦の流れ</h3></div>
+            </div>
+            <div class="series-guide">
+              <div><strong>1〜3戦</strong><span>抽選した陣営</span></div><b>→</b>
+              <div><strong>4〜6戦</strong><span>陣営交代</span></div><b>→</b>
+              <div><strong>7〜9戦</strong><span>再び交代</span></div><b>→</b>
+              <div><strong>10〜12戦</strong><span>再び交代</span></div>
+            </div>
+            <p class="guide-note">開始陣営は<strong>皇帝側50%・奴隷側50%</strong>で抽選。12試合終了時の勝利数で総合結果を決めます。</p>
+          </section>
+
+          <section class="guide-section guide-section-cpu" aria-labelledby="guideCpuTitle">
+            <div class="guide-heading">
+              <span class="guide-number">5</span>
+              <div><small>FAIR CPU</small><h3 id="guideCpuTitle">CPUは後出ししない</h3></div>
+            </div>
+            <p class="guide-note">CPUは各プレイ開始時にカードを内部で先に確定します。あなたがカードを選んだ後に変更することはありません。</p>
+          </section>
+
+          <div id="installHelp" class="install-help hidden">iPhoneではSafariの共有ボタンから「ホーム画面に追加」を選んでください。</div>
+          <label class="setting-row"><span>BGM</span><input id="bgmToggle" type="checkbox" checked></label>
+          <label class="setting-row"><span>効果音</span><input id="sfxToggle" type="checkbox" checked></label>
+          <label class="setting-row"><span>端末の振動</span><input id="hapticToggle" type="checkbox" checked></label>
+          <label class="setting-row"><span>高速モード</span><input id="fastModeToggle" type="checkbox"></label>
+          <p class="help-fast-note">高速モードでは、3・2・1、カード公開、試合開始、勝敗演出などを短縮します。CPUの強さや判定には影響しません。</p>
+        </div>
+        <div class="result-actions"><button id="helpCloseBtn" class="primary-btn" type="button">閉じる</button></div>
+      </div>
+    </section>
+
+    <div id="victoryBurst" class="victory-burst hidden" aria-hidden="true">
+      <div class="victory-burst-core">
+        <div class="victory-ring victory-ring-a"></div>
+        <div class="victory-ring victory-ring-b"></div>
+        <div id="victoryParticles" class="victory-particles"></div>
+        <p id="victoryKicker" class="victory-kicker">MATCH WON</p>
+        <strong id="victoryWord" class="victory-word">VICTORY</strong>
+        <span id="victorySub" class="victory-sub">勝利</span>
+      </div>
+    </div>
+
+    <section id="resultScreen" class="result-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <div id="resultCard" class="result-card cinematic-result-card">
+        <div id="resultStamp" class="result-stamp" aria-hidden="true">WIN</div>
+        <p id="resultEyebrow" class="eyebrow">MATCH RESULT</p>
+        <h2 id="resultTitle">勝利</h2>
+        <div id="resultDuel" class="result-duel" aria-label="勝負したカード">
+          <div>
+            <span>YOU</span>
+            <div id="resultPlayerCard" class="result-mini-card"><img src="images/back.jpeg" alt="あなたのカード"></div>
+          </div>
+          <div class="result-duel-vs">VS</div>
+          <div>
+            <span>CPU</span>
+            <div id="resultCpuCard" class="result-mini-card"><img src="images/back.jpeg" alt="CPUのカード"></div>
+          </div>
+        </div>
+        <p id="resultText"></p>
+        <div id="resultScore" class="result-score"></div>
+        <div class="result-actions">
+          <button id="retryBtn" class="primary-btn" type="button">次の試合へ</button>
+          <button id="changeRoleBtn" class="ghost-btn" type="button">陣営抽選へ戻る</button>
+        </div>
+      </div>
+    </section>
+    <div id="updateToast" class="update-toast hidden" role="status">
+      <span>新しいバージョンがあります。</span>
+      <button id="updateBtn" type="button">更新</button>
+    </div>
+  </main>
+
+  <script src="script.js?v=17.0"></script>
+</body>
+</html>
