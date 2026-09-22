@@ -3176,3 +3176,257 @@ body.fast-mode .hand-card.is-committing { animation-duration: .10s; }
 
 /* v18.6.4 critical layout fix: countdown must never join battle grid */
 .battle-zone > .countdown-overlay { position: absolute !important; inset: 0 !important; z-index: 8 !important; }
+
+
+/* v18.6.6 — result overlay must stay above sticky hand and remain scrollable */
+.result-overlay {
+  z-index: 110;
+  overflow-y: auto;
+  overflow-x: hidden;
+  place-items: start center;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.result-overlay > .result-card {
+  margin-top: max(10px, env(safe-area-inset-top));
+  margin-bottom: max(20px, env(safe-area-inset-bottom));
+}
+.result-actions {
+  position: relative;
+  z-index: 4;
+}
+@media (max-width: 680px) {
+  .result-overlay {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .result-overlay > .result-card {
+    width: 100%;
+    margin-top: 0;
+    margin-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+
+/* ====================================================================
+   v18.7 QUALITY PASS — relic typography / forged controls / intermission
+   ==================================================================== */
+:root {
+  --relic-gold: #b58b45;
+  --relic-gold-light: #e0bd78;
+  --relic-dark: #0a0908;
+  --relic-iron: #171513;
+}
+
+/* 見出しだけを古書・石板寄りに。本文は読みやすいサンセリフを維持。 */
+h1, h2, h3,
+.title-copy h2,
+.lottery-copy h3,
+.result-card h2,
+.hand-title-row h2,
+.match-intro-inner strong,
+.intermission-inner strong,
+.series-final-score {
+  font-family: Georgia, "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-weight: 800;
+  text-rendering: optimizeLegibility;
+}
+
+/* ボタンを古びた金属プレートに統一。 */
+.ghost-btn,
+.primary-btn,
+.lottery-btn,
+.install-btn,
+.result-actions button,
+.selection-actions button {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: rgba(181,139,69,.56);
+  background:
+    linear-gradient(180deg, rgba(35,31,26,.98), rgba(13,12,11,.99));
+  color: #ead3a2;
+  box-shadow:
+    inset 0 1px 0 rgba(255,231,178,.08),
+    inset 0 -1px 0 rgba(0,0,0,.55),
+    0 6px 16px rgba(0,0,0,.20);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  font-weight: 800;
+  letter-spacing: .03em;
+  transition: transform .12s ease, filter .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.primary-btn,
+.lottery-btn {
+  border-color: rgba(222,180,99,.78);
+  background:
+    linear-gradient(180deg, rgba(106,77,33,.98), rgba(43,31,15,.99) 58%, rgba(24,19,13,.99));
+  color: #fff0c9;
+  text-shadow: 0 1px 0 rgba(0,0,0,.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255,232,179,.20),
+    inset 0 -2px 0 rgba(0,0,0,.52),
+    0 7px 18px rgba(0,0,0,.26),
+    0 0 0 1px rgba(92,62,24,.30);
+}
+@media (hover:hover) and (pointer:fine) {
+  .ghost-btn:hover,
+  .primary-btn:hover,
+  .lottery-btn:hover,
+  .install-btn:hover,
+  .result-actions button:hover,
+  .selection-actions button:hover {
+    filter: brightness(1.10);
+    border-color: rgba(226,186,105,.82);
+  }
+}
+.ghost-btn:active,
+.primary-btn:active,
+.lottery-btn:active,
+.install-btn:active,
+.result-actions button:active,
+.selection-actions button:active {
+  transform: translateY(1px) scale(.985);
+  filter: brightness(.94);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.42), 0 2px 8px rgba(0,0,0,.22);
+}
+.audio-btn.is-on,
+.speed-btn.is-on {
+  color: #f4d99f;
+  border-color: rgba(218,173,87,.78);
+  background: linear-gradient(180deg, rgba(73,55,28,.95), rgba(24,20,14,.98));
+}
+
+/* 3試合ごとの章切り替え。短時間だけ表示し、テンポは止めすぎない。 */
+.intermission {
+  position: fixed;
+  inset: 0;
+  z-index: 105;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 44%, rgba(181,132,55,.15), transparent 24%),
+    rgba(3,3,3,.91);
+  backdrop-filter: blur(8px);
+}
+.intermission-inner {
+  position: relative;
+  width: min(100%, 430px);
+  padding: 30px 22px 28px;
+  text-align: center;
+  border: 2px solid rgba(176,132,61,.50);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(29,24,19,.98), rgba(10,10,10,.99));
+  box-shadow: inset 0 0 0 1px rgba(244,211,144,.05), 0 28px 80px rgba(0,0,0,.62);
+  animation: intermissionIn .38s cubic-bezier(.16,.82,.24,1) both;
+}
+.intermission-inner::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border: 1px solid rgba(230,194,118,.16);
+  border-radius: 12px;
+  pointer-events: none;
+}
+.intermission-inner p {
+  margin: 0 0 8px;
+  color: #aa8950;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .30em;
+}
+.intermission-inner > span {
+  display: block;
+  color: #8f989d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+.intermission-inner strong {
+  display: block;
+  margin: 14px 0 8px;
+  color: #f0d8a2;
+  font-size: clamp(28px, 8vw, 42px);
+  letter-spacing: .06em;
+  text-shadow: 0 0 24px rgba(211,164,82,.14);
+}
+.intermission-score {
+  margin: 10px auto 9px;
+  color: #e4c17d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.intermission-inner small {
+  color: #858b8f;
+  font-size: 11px;
+  letter-spacing: .15em;
+}
+@keyframes intermissionIn {
+  from { opacity: 0; transform: scale(.95) translateY(10px); filter: blur(3px); }
+  to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intermission-inner { animation-duration: .01ms !important; }
+}
+
+/* 小画面では装飾より押しやすさを優先。 */
+@media (max-width: 680px) {
+  body.game-active .topbar-actions .ghost-btn {
+    border-color: rgba(142,111,61,.42);
+    background: linear-gradient(180deg, rgba(24,23,21,.98), rgba(9,11,13,.99));
+  }
+  body.game-active .topbar-actions .audio-btn.is-on,
+  body.game-active .topbar-actions .speed-btn.is-on {
+    border-color: rgba(207,161,76,.74);
+    background: linear-gradient(180deg, rgba(65,49,25,.96), rgba(18,17,14,.99));
+  }
+}
+
+
+/* v18.7.6 — definitive fixed battle positions: YOU LEFT / CPU RIGHT */
+.battle-zone {
+  direction: ltr !important;
+  grid-template-areas: "you vs cpu" !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+}
+.battle-zone > .player-battle-side {
+  grid-area: you !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  order: 1 !important;
+}
+.battle-zone > .versus {
+  grid-area: vs !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  order: 2 !important;
+}
+.battle-zone > .cpu-battle-side {
+  grid-area: cpu !important;
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  order: 3 !important;
+}
+.result-duel {
+  direction: ltr !important;
+  grid-template-areas: "you vs cpu" !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+}
+.result-duel > .result-player-side { grid-area: you !important; grid-column: 1 !important; order: 1 !important; }
+.result-duel > .result-duel-vs { grid-area: vs !important; grid-column: 2 !important; order: 2 !important; }
+.result-duel > .result-cpu-side { grid-area: cpu !important; grid-column: 3 !important; order: 3 !important; }
+
+/* After confirmation, do not leave the selected hand card visually floating on its original right/center position. */
+.hand-card.is-committing {
+  animation: tactileCardCommitQuick .08s ease-out both !important;
+}
+@keyframes tactileCardCommitQuick {
+  from { opacity: 1; transform: translateY(calc(var(--fan-lift, 0px) - 18px)) rotate(var(--fan-rot, 0deg)) scale(1.02); }
+  to { opacity: .28; transform: translateY(var(--fan-lift, 0px)) rotate(var(--fan-rot, 0deg)) scale(.96); }
+}
+

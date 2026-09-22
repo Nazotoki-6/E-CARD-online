@@ -16,7 +16,7 @@
   <link rel="preload" as="image" href="images/citizen.jpeg" />
   <link rel="preload" as="image" href="images/emperor.jpeg" />
   <link rel="preload" as="image" href="images/slave.jpeg" />
-  <link rel="stylesheet" href="style.css?v=18.6.5" />
+  <link rel="stylesheet" href="style.css?v=18.7.6" />
 </head>
 <body>
   <main class="app-shell">
@@ -187,6 +187,16 @@
         </div>
       </div>
 
+      <div id="intermission" class="intermission hidden" aria-live="assertive" aria-hidden="true">
+        <div class="intermission-inner">
+          <p>INTERMISSION</p>
+          <span id="intermissionGroup">GROUP 2 / 4</span>
+          <strong id="intermissionRole">次は奴隷側</strong>
+          <div id="intermissionScore" class="intermission-score">0 − 0</div>
+          <small>陣営交代</small>
+        </div>
+      </div>
+
       <div class="status-row">
         <div>
           <span class="status-label">あなた</span>
@@ -207,14 +217,14 @@
 
       <section id="battleZone" class="battle-zone">
         <div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"></div>
-        <div class="battle-side">
+        <div class="battle-side player-battle-side">
           <p>あなた</p>
           <div id="playerPlayed" class="played-card placeholder">?</div>
         </div>
 
         <div class="versus">VS</div>
 
-        <div class="battle-side">
+        <div class="battle-side cpu-battle-side">
           <p>CPU</p>
           <div id="cpuPlayed" class="played-card">
             <img src="images/back.jpeg" alt="E-CARD 裏面" />
@@ -231,7 +241,7 @@
         <div class="selection-copy">
           <span>選択中のカード</span>
           <strong id="selectionName">-</strong>
-          <small id="selectionHint">カードを1枚選ぶと、ここに表示されます。</small>
+          <small id="selectionHint">カードを1枚選び、同じカードをもう一度タップすると確定できます。</small>
         </div>
         <div class="selection-actions">
           <button id="confirmCardBtn" class="primary-btn" type="button">このカードで勝負する</button>
@@ -357,12 +367,12 @@
         <p id="resultEyebrow" class="eyebrow">MATCH RESULT</p>
         <h2 id="resultTitle">勝利</h2>
         <div id="resultDuel" class="result-duel" aria-label="勝負したカード">
-          <div>
+          <div class="result-player-side">
             <span>YOU</span>
             <div id="resultPlayerCard" class="result-mini-card"><img src="images/back.jpeg" alt="あなたのカード"></div>
           </div>
           <div class="result-duel-vs">VS</div>
-          <div>
+          <div class="result-cpu-side">
             <span>CPU</span>
             <div id="resultCpuCard" class="result-mini-card"><img src="images/back.jpeg" alt="CPUのカード"></div>
           </div>
@@ -381,6 +391,6 @@
     </div>
   </main>
 
-  <script src="script.js?v=18.6.5"></script>
+  <script src="script.js?v=18.7.6"></script>
 </body>
 </html>

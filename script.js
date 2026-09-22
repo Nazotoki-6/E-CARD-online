@@ -66,6 +66,10 @@ const cpuLockLabel = document.getElementById('cpuLockLabel');
 const updateToast = document.getElementById('updateToast');
 const updateBtn = document.getElementById('updateBtn');
 const matchIntro = document.getElementById('matchIntro');
+const intermission = document.getElementById('intermission');
+const intermissionGroup = document.getElementById('intermissionGroup');
+const intermissionRole = document.getElementById('intermissionRole');
+const intermissionScore = document.getElementById('intermissionScore');
 const matchIntroTop = document.getElementById('matchIntroTop');
 const matchIntroMain = document.getElementById('matchIntroMain');
 const matchIntroSub = document.getElementById('matchIntroSub');
@@ -116,6 +120,27 @@ let cpuPersonality = null;
 // 12戦マッチの総合成績と、個別試合・陣営別・連勝記録をlocalStorageへ保存する。
 const RECORDS_KEY = 'ecard-records-v1';
 const RECORDS_VERSION = 1;
+
+function enforceBattleSideOrder() {
+  // Position rule: YOU are always left, CPU is always right.
+  // Keep this fixed regardless of side, lead order, reveal, or result phase.
+  if (battleZone) {
+    const playerSide = battleZone.querySelector('.player-battle-side');
+    const versus = battleZone.querySelector('.versus');
+    const cpuSide = battleZone.querySelector('.cpu-battle-side');
+    if (playerSide && versus && cpuSide) {
+      battleZone.append(playerSide, versus, cpuSide);
+    }
+  }
+  if (resultDuel) {
+    const playerSide = resultDuel.querySelector('.result-player-side');
+    const versus = resultDuel.querySelector('.result-duel-vs');
+    const cpuSide = resultDuel.querySelector('.result-cpu-side');
+    if (playerSide && versus && cpuSide) {
+      resultDuel.append(playerSide, versus, cpuSide);
+    }
+  }
+}
 
 function createEmptyRecords() {
   return {
@@ -920,12 +945,20 @@ function showSelectionTray(card) {
   if (!selectionTray || !selectionPreview || !selectionName || !selectionHint) return;
   selectionPreview.innerHTML = `<img src="${CARD_INFO[card].image}" alt="${CARD_INFO[card].label}カード">`;
   selectionName.textContent = CARD_INFO[card].label;
-  selectionHint.textContent = 'このカードで確定すると、そのまま伏せて勝負します。';
+  selectionHint.textContent = '同じカードをもう一度タップすると確定。下のボタンでも決定できます。';
   selectionTray.classList.remove('hidden');
 }
 
 function chooseHandCard(index) {
   if (inputLocked || index < 0 || index >= playerHand.length) return;
+
+  // 1回目のタップで選択、同じカードをもう1回タップで確定。
+  // 誤タップ防止の2段階操作は維持しつつ、確認ボタンまで指を移動しなくてよい。
+  if (selectedHandIndex === index) {
+    playCard(index);
+    return;
+  }
+
   const changed = selectedHandIndex !== index;
   selectedHandIndex = index;
   const card = playerHand[index];
@@ -946,7 +979,7 @@ function chooseHandCard(index) {
     void picked.offsetWidth;
     picked.classList.add('is-pick-pop');
   }
-  setMessage(`${CARD_INFO[card].label}を選択中。確定すると戻せません。`);
+  setMessage(`${CARD_INFO[card].label}を選択中。同じカードをもう一度タップで確定します。`);
 }
 
 function renderHand() {
@@ -1137,6 +1170,7 @@ function decorateOutcome(result) {
 }
 
 async function resolveChosenBattle(pending, resumed = false) {
+  enforceBattleSideOrder();
   const playerIndex = pending.playerIndex;
   const cpuIndex = pending.cpuIndex;
   const playerCard = pending.playerCard;
@@ -1259,12 +1293,14 @@ async function resolveChosenBattle(pending, resumed = false) {
     reshuffleRemainingHands();
     updateStatus();
     lockCpuCard();
-    inputLocked = false;
     saveSeriesState('ready');
 
+    // 引き分け表示中は次の入力をまだ受け付けない。
+    // 表示切替と手札再描画が完了してから操作を解放する。
     await wait(1200);
     if (sequenceId !== battleSequenceId) return;
     resetBattleView();
+    inputLocked = false;
     renderHand();
     return;
   }
@@ -1307,13 +1343,12 @@ async function playCard(playerIndex) {
   if (selectedButton) {
     selectedButton.classList.remove('is-pick-pop', 'is-chosen');
     selectedButton.classList.add('is-selected', 'is-committing');
-    selectedButton.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   }
   if (selectionTray) selectionTray.classList.add('is-confirming');
   if (selectionHint) selectionHint.textContent = 'カードを確定しました。勝負を開始します。';
   sfxCardConfirm();
   safeVibrate([10, 18, 24]);
-  await wait(190);
+  await wait(80);
   if (selectionTray) selectionTray.classList.remove('is-confirming');
   selectedHandIndex = null;
 
@@ -1374,6 +1409,7 @@ function showPlayedCard(target, card) {
 }
 
 function resetBattleView() {
+  enforceBattleSideOrder();
   hideSelectionTray();
   countdownOverlay.classList.add('hidden');
   countdownOverlay.textContent = '';
@@ -1530,9 +1566,27 @@ function showSeriesResult() {
   resultScreen.classList.remove('hidden');
 }
 
-function continueSeries() {
+async function runIntermission() {
+  if (!intermission) return;
+  const group = Math.ceil(currentMatch / MATCHES_PER_GROUP);
+  if (intermissionGroup) intermissionGroup.textContent = `GROUP ${group} / 4`;
+  if (intermissionRole) intermissionRole.textContent = `次は${sideLabel(playerSideForMatch(currentMatch))}`;
+  if (intermissionScore) intermissionScore.textContent = `${playerWins} − ${cpuWins}`;
+  intermission.classList.remove('hidden');
+  intermission.setAttribute('aria-hidden', 'false');
+  sfxIntermission();
+  safeVibrate([18, 45, 28]);
+  await wait(860);
+  intermission.classList.add('hidden');
+  intermission.setAttribute('aria-hidden', 'true');
+}
+
+async function continueSeries() {
   if (currentMatch < TOTAL_MATCHES) {
     currentMatch += 1;
+    const startsNewGroup = (currentMatch - 1) % MATCHES_PER_GROUP === 0;
+    resultScreen.classList.add('hidden');
+    if (startsNewGroup) await runIntermission();
     startMatch();
   } else {
     backToSetup();
@@ -1549,6 +1603,7 @@ function backToSetup() {
   releaseWakeLock();
   countdownOverlay.classList.add('hidden');
   if (matchIntro) matchIntro.classList.add('hidden');
+  if (intermission) { intermission.classList.add('hidden'); intermission.setAttribute('aria-hidden', 'true'); }
   resultScreen.classList.add('hidden');
   gameScreen.classList.add('hidden');
   setupScreen.classList.remove('hidden');
@@ -1751,12 +1806,19 @@ function bgmTensionStage() {
   return 0;
 }
 
+function bgmGroupVariant() {
+  // 3試合ごとに音階とアクセントを切り替え、12戦の長時間プレイで単調になりにくくする。
+  return Math.max(0, Math.min(3, Math.floor((Number(currentMatch || 1) - 1) / MATCHES_PER_GROUP)));
+}
+
 function bgmTick() {
   if (!AUDIO.bgmEnabled || !AUDIO.ctx) return;
 
   // v18.4: 3段階で緊張が増すBGM。
   // 序盤＝低い脈動、中盤＝金属的な刻み、終盤＝鼓動・不協和・高音を増やす。
   const stage = bgmTensionStage();
+  const groupVariant = bgmGroupVariant();
+  const transpose = [1, 0.943874, 1.059463, 0.890899][groupVariant];
   const bassByStage = [
     [73.42, 73.42, 69.30, 77.78, 73.42, 82.41, 69.30, 65.41],
     [73.42, 69.30, 77.78, 73.42, 65.41, 69.30, 82.41, 77.78],
@@ -1768,28 +1830,28 @@ function bgmTick() {
   const bass = bassByStage[stage];
 
   if (i % 2 === 0) {
-    tone(bass[(i / 2) % bass.length], 0.30 - stage * 0.025, 'triangle', 0.17 + stage * 0.018, 0, AUDIO.musicGain);
+    tone(bass[(i / 2) % bass.length] * transpose, 0.30 - stage * 0.025, 'triangle', 0.17 + stage * 0.018, 0, AUDIO.musicGain);
   }
 
   // 二連の鼓動。終盤ほど太く・近くなる。
   if (i === 0 || i === 8 || (stage === 2 && i === 12)) {
-    tone(stage === 2 ? 82.41 : 98.00, 0.09, 'sawtooth', 0.10 + stage * 0.018, 0, AUDIO.musicGain);
-    tone(stage === 2 ? 92.50 : 116.54, 0.065, 'sawtooth', 0.072 + stage * 0.012, stage === 2 ? 0.075 : 0.10, AUDIO.musicGain);
+    tone((stage === 2 ? 82.41 : 98.00) * transpose, 0.09, 'sawtooth', 0.10 + stage * 0.018, 0, AUDIO.musicGain);
+    tone((stage === 2 ? 92.50 : 116.54) * transpose, 0.065, 'sawtooth', 0.072 + stage * 0.012, stage === 2 ? 0.075 : 0.10, AUDIO.musicGain);
   }
 
   if (tensionLead[i]) {
-    tone(tensionLead[i], 0.13, 'square', 0.046 + stage * 0.012, 0.025, AUDIO.musicGain);
+    tone(tensionLead[i] * transpose, 0.13, 'square', 0.046 + stage * 0.012, 0.025, AUDIO.musicGain);
   }
 
   // 時計／金属片のような刻み。
   if (i % 2 === 1) {
-    tone(stage === 0 ? 1174.66 : stage === 1 ? 1318.51 : 1480.00,
+    tone((stage === 0 ? 1174.66 : stage === 1 ? 1318.51 : 1480.00) * [1, 1.06, .94, 1.12][groupVariant],
          0.016, 'square', 0.015 + stage * 0.006, 0, AUDIO.musicGain);
   }
 
   if (stage >= 1 && (i === 5 || i === 13)) {
-    tone(311.13, 0.22, 'sine', 0.038 + stage * 0.008, 0, AUDIO.musicGain);
-    tone(329.63, 0.20, 'sine', 0.027 + stage * 0.006, 0.035, AUDIO.musicGain);
+    tone(311.13 * transpose, 0.22, 'sine', 0.038 + stage * 0.008, 0, AUDIO.musicGain);
+    tone(329.63 * transpose, 0.20, 'sine', 0.027 + stage * 0.006, 0.035, AUDIO.musicGain);
   }
 
   // 最終局面だけ、低い金属音と半音衝突を加える。
@@ -1798,6 +1860,15 @@ function bgmTick() {
     tone(207.65, 0.15, 'triangle', 0.040, 0.02, AUDIO.musicGain);
     tone(220.00, 0.15, 'triangle', 0.035, 0.035, AUDIO.musicGain);
     noiseBurst(0.025, 0.010, 0.02, AUDIO.musicGain, 2200);
+  }
+
+  // グループごとに異なる疎なアクセントを加える。主旋律を増やしすぎず、雰囲気だけ変える。
+  if (groupVariant === 1 && i === 7) {
+    tone(246.94 * transpose, 0.19, 'triangle', 0.026, 0, AUDIO.musicGain);
+  } else if (groupVariant === 2 && (i === 2 || i === 10)) {
+    noiseBurst(0.018, 0.008, 0, AUDIO.musicGain, 2600);
+  } else if (groupVariant === 3 && i === 15) {
+    tone(110 * transpose, 0.34, 'sine', 0.042, 0, AUDIO.musicGain);
   }
 
   AUDIO.step += 1;
@@ -1817,6 +1888,14 @@ function stopBgm() {
     clearInterval(AUDIO.timer);
     AUDIO.timer = null;
   }
+}
+
+function sfxIntermission() {
+  if (!AUDIO.sfxEnabled || !ensureAudio()) return;
+  duckMusic(0.45, 0.18, 0.34);
+  lowImpact(0.09);
+  metallicHit(154, 0.072, 0.10);
+  metallicHit(196, 0.055, 0.26);
 }
 
 function sfxMatchStart() {
@@ -2082,3 +2161,6 @@ document.addEventListener('visibilitychange', () => {
     requestWakeLock();
   }
 });
+
+// v18.7.4 final side-position guard
+enforceBattleSideOrder();

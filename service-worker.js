@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ecard-online-v18-6-5-stability-20260922';
+const CACHE_NAME = 'ecard-online-v18-7-6-player-left-hardlock-20260922';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=18.6.5',
-  './script.js?v=18.6.5',
+  './style.css?v=18.7.6',
+  './script.js?v=18.7.6',
   './manifest.json',
   './images/back.jpeg',
   './images/citizen.jpeg',
