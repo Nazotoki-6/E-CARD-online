@@ -1,7 +1,7 @@
 const CARD_INFO = {
-  emperor: { label: '皇帝', image: 'images/emperor.jpeg' },
-  citizen: { label: '市民', image: 'images/citizen.jpeg' },
-  slave: { label: '奴隷', image: 'images/slave.jpeg' },
+  emperor: { label: '皇帝', image: 'images/emperor.webp' },
+  citizen: { label: '市民', image: 'images/citizen.webp' },
+  slave: { label: '奴隷', image: 'images/slave.webp' },
 };
 
 const TOTAL_MATCHES = 12;
@@ -106,6 +106,15 @@ let playerWins = 0;
 let cpuWins = 0;
 let inputLocked = false;
 let selectedHandIndex = null;
+let handDragSuppressClickUntil = 0;
+const handDragState = {
+  active: false,
+  pointerId: null,
+  startX: 0,
+  startY: 0,
+  dragging: false,
+  lastIndex: null,
+};
 let cpuPlannedIndex = null;
 let matchResults = [];
 let battleSequenceId = 0;
@@ -773,7 +782,7 @@ function resetLotteryView() {
   }
   if (lotteryCard) lotteryCard.classList.remove('is-drawing', 'is-revealed', 'is-emperor', 'is-slave');
   if (lotteryResultImage) {
-    lotteryResultImage.src = 'images/back.jpeg';
+    lotteryResultImage.src = 'images/back.webp';
     lotteryResultImage.alt = '抽選前のE-CARD 裏面';
   }
   if (lotteryResultLabel) lotteryResultLabel.textContent = '抽選前';
@@ -823,7 +832,7 @@ async function runSideLottery() {
   if (lotteryResultLabel) lotteryResultLabel.textContent = '抽選中…';
   if (lotteryResultSub) lotteryResultSub.textContent = 'カードが止まるまで待ってください';
   if (lotteryResultImage) {
-    lotteryResultImage.src = 'images/back.jpeg';
+    lotteryResultImage.src = 'images/back.webp';
     lotteryResultImage.alt = '抽選中のE-CARD 裏面';
   }
   if (lotteryCard) {
@@ -936,7 +945,7 @@ function currentPickPrompt() {
 function hideSelectionTray() {
   selectedHandIndex = null;
   if (selectionTray) selectionTray.classList.add('hidden');
-  if (selectionPreview) selectionPreview.innerHTML = `<img src="images/back.jpeg" alt="選択中のカード">`;
+  if (selectionPreview) selectionPreview.innerHTML = `<img src="images/back.webp" alt="選択中のカード">`;
   if (selectionName) selectionName.textContent = '-';
   if (selectionHint) selectionHint.textContent = 'カードを1枚選ぶと、ここに表示されます。';
 }
@@ -949,29 +958,37 @@ function showSelectionTray(card) {
   selectionTray.classList.remove('hidden');
 }
 
-function chooseHandCard(index) {
+function updateHandSelectionVisuals() {
+  playerHandEl.querySelectorAll('.hand-card').forEach((button) => {
+    const index = Number(button.dataset.index);
+    const isSelected = selectedHandIndex === index;
+    button.classList.toggle('is-selected', isSelected);
+    button.classList.toggle('is-dimmed', selectedHandIndex !== null && !isSelected);
+  });
+}
+
+function chooseHandCard(index, { allowConfirm = true, fromSlide = false } = {}) {
   if (inputLocked || index < 0 || index >= playerHand.length) return;
 
-  // 1回目のタップで選択、同じカードをもう1回タップで確定。
-  // 誤タップ防止の2段階操作は維持しつつ、確認ボタンまで指を移動しなくてよい。
-  if (selectedHandIndex === index) {
+  // 通常タップは「1回目=選択 / 同じカードをもう1回=確定」。
+  // 横スライド中は、同じカード上を通っても誤確定しない。
+  if (allowConfirm && selectedHandIndex === index) {
     playCard(index);
     return;
   }
+  if (!allowConfirm && selectedHandIndex === index) return;
 
   const changed = selectedHandIndex !== index;
   selectedHandIndex = index;
   const card = playerHand[index];
   showSelectionTray(card);
-  // 選択中は勝負枠には何も出さない。
-  // 選んだカードの確認は手札の浮き上がりと確認トレイだけで行い、
-  // 確定後にはじめて先手順に伏せカードを置く。
   showPlaceholder(playerPlayedEl);
   showPlaceholder(cpuPlayedEl);
-  renderHand();
+  updateHandSelectionVisuals();
+
   if (changed) {
     sfxCardSelect();
-    safeVibrate(9);
+    safeVibrate(fromSlide ? 5 : 9);
   }
   const picked = playerHandEl.querySelector(`[data-index="${index}"]`);
   if (picked) {
@@ -979,7 +996,88 @@ function chooseHandCard(index) {
     void picked.offsetWidth;
     picked.classList.add('is-pick-pop');
   }
-  setMessage(`${CARD_INFO[card].label}を選択中。同じカードをもう一度タップで確定します。`);
+  setMessage(fromSlide
+    ? `${CARD_INFO[card].label}を選択中。指を離しても選択は保持されます。`
+    : `${CARD_INFO[card].label}を選択中。同じカードをもう一度タップで確定します。`);
+}
+
+function nearestHandCardIndex(clientX) {
+  const buttons = Array.from(playerHandEl.querySelectorAll('.hand-card:not(:disabled)'));
+  if (!buttons.length) return null;
+
+  let nearest = null;
+  let nearestDistance = Infinity;
+  buttons.forEach((button) => {
+    const rect = button.getBoundingClientRect();
+    const center = rect.left + rect.width / 2;
+    const distance = Math.abs(clientX - center);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearest = Number(button.dataset.index);
+    }
+  });
+  return Number.isInteger(nearest) ? nearest : null;
+}
+
+function resetHandDrag() {
+  handDragState.active = false;
+  handDragState.pointerId = null;
+  handDragState.dragging = false;
+  handDragState.lastIndex = null;
+  playerHandEl.classList.remove('is-slide-selecting');
+}
+
+function setupHandSlideSelection() {
+  if (!playerHandEl || playerHandEl.dataset.slideSelectionReady === '1') return;
+  playerHandEl.dataset.slideSelectionReady = '1';
+
+  playerHandEl.addEventListener('pointerdown', (event) => {
+    if (inputLocked || !playerHand.length || event.pointerType === 'mouse' && event.button !== 0) return;
+    handDragState.active = true;
+    handDragState.pointerId = event.pointerId;
+    handDragState.startX = event.clientX;
+    handDragState.startY = event.clientY;
+    handDragState.dragging = false;
+    handDragState.lastIndex = null;
+  });
+
+  playerHandEl.addEventListener('pointermove', (event) => {
+    if (!handDragState.active || handDragState.pointerId !== event.pointerId || inputLocked) return;
+    const dx = event.clientX - handDragState.startX;
+    const dy = event.clientY - handDragState.startY;
+
+    if (!handDragState.dragging) {
+      // 横方向への意図が明確になった時だけスライド選択を開始。
+      // 縦スクロールは通常どおり使える。
+      if (Math.abs(dx) < 9 || Math.abs(dx) <= Math.abs(dy) * 1.05) return;
+      handDragState.dragging = true;
+      playerHandEl.classList.add('is-slide-selecting');
+      try { playerHandEl.setPointerCapture(event.pointerId); } catch (_) {}
+    }
+
+    event.preventDefault();
+    const index = nearestHandCardIndex(event.clientX);
+    if (index === null || index === handDragState.lastIndex) return;
+    handDragState.lastIndex = index;
+    chooseHandCard(index, { allowConfirm: false, fromSlide: true });
+  }, { passive: false });
+
+  const finish = (event) => {
+    if (!handDragState.active || (event && handDragState.pointerId !== event.pointerId)) return;
+    if (handDragState.dragging) {
+      handDragSuppressClickUntil = Date.now() + 380;
+      if (event) {
+        try { playerHandEl.releasePointerCapture(event.pointerId); } catch (_) {}
+      }
+    }
+    resetHandDrag();
+  };
+
+  playerHandEl.addEventListener('pointerup', finish);
+  playerHandEl.addEventListener('pointercancel', finish);
+  playerHandEl.addEventListener('lostpointercapture', () => {
+    if (handDragState.active) resetHandDrag();
+  });
 }
 
 function renderHand() {
@@ -1003,7 +1101,13 @@ function renderHand() {
     button.style.setProperty('--fan-lift', `${lift}px`);
     button.setAttribute('aria-label', `${CARD_INFO[card].label}を選ぶ`);
     button.innerHTML = `<img src="${CARD_INFO[card].image}" alt="${CARD_INFO[card].label}カード">`;
-    button.addEventListener('click', () => chooseHandCard(index));
+    button.addEventListener('click', (event) => {
+      if (Date.now() < handDragSuppressClickUntil) {
+        event.preventDefault();
+        return;
+      }
+      chooseHandCard(index);
+    });
     playerHandEl.appendChild(button);
   });
 
@@ -1051,7 +1155,7 @@ function showPlaceholder(target) {
 
 function showCardBack(target, who = '') {
   target.className = 'played-card is-set';
-  target.innerHTML = `<img src="images/back.jpeg" alt="${who ? `${who}の` : ''}E-CARD 裏面">`;
+  target.innerHTML = `<img src="images/back.webp" alt="${who ? `${who}の` : ''}E-CARD 裏面">`;
 }
 
 function pulseCountdown(text) {
@@ -1169,7 +1273,7 @@ function decorateOutcome(result) {
   window.setTimeout(() => document.body.classList.remove('battle-shake'), paceMs(430, 0.65));
 }
 
-async function resolveChosenBattle(pending, resumed = false) {
+async function resolveChosenBattle(pending, resumed = false, commitSourceRect = null) {
   enforceBattleSideOrder();
   const playerIndex = pending.playerIndex;
   const cpuIndex = pending.cpuIndex;
@@ -1203,22 +1307,23 @@ async function resolveChosenBattle(pending, resumed = false) {
     setMessage('中断した勝負を同じカードで再開します……');
     await wait(360);
   } else if (lead === playerSide) {
-    showCardBack(playerPlayedEl, 'あなた');
+    setMessage('選んだカードを伏せる……');
+    await animateCommittedCardToBattle(playerCard, commitSourceRect);
     sfxCard();
     safeVibrate(20);
     setMessage('あなたが先にカードを伏せた。CPUが続く……');
-    await wait(430);
+    await wait(300);
     if (sequenceId !== battleSequenceId) return;
     showCardBack(cpuPlayedEl, 'CPU');
     sfxCard();
   } else {
-    // CPU先手でも、選択中にはCPUカードを見せず、確定後にここで伏せる。
+    // CPU先手はCPUが先に伏せ、その後に選んだ手札が左の自分枠へ移動する。
     showCardBack(cpuPlayedEl, 'CPU');
     sfxCard();
     setMessage('CPUが先にカードを伏せた。あなたが続く……');
-    await wait(430);
+    await wait(300);
     if (sequenceId !== battleSequenceId) return;
-    showCardBack(playerPlayedEl, 'あなた');
+    await animateCommittedCardToBattle(playerCard, commitSourceRect);
     sfxCard();
     safeVibrate(20);
   }
@@ -1333,22 +1438,79 @@ async function resolveChosenBattle(pending, resumed = false) {
   showMatchResult(playerWon, playerCard, cpuCard);
 }
 
+function prefersReducedMotion() {
+  return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function animateCommittedCardToBattle(card, sourceRect) {
+  if (!sourceRect || !playerPlayedEl || prefersReducedMotion()) {
+    showCardBack(playerPlayedEl, 'あなた');
+    return Promise.resolve();
+  }
+
+  const targetRect = playerPlayedEl.getBoundingClientRect();
+  if (!targetRect.width || !targetRect.height) {
+    showCardBack(playerPlayedEl, 'あなた');
+    return Promise.resolve();
+  }
+
+  const flight = document.createElement('div');
+  flight.className = 'commit-flight-card';
+  flight.setAttribute('aria-hidden', 'true');
+  flight.style.left = `${sourceRect.left}px`;
+  flight.style.top = `${sourceRect.top}px`;
+  flight.style.width = `${sourceRect.width}px`;
+  flight.style.height = `${sourceRect.height}px`;
+
+  const inner = document.createElement('div');
+  inner.className = 'commit-flight-card-inner';
+  inner.innerHTML = `
+    <div class="commit-flight-face commit-flight-front"><img src="${CARD_INFO[card].image}" alt=""></div>
+    <div class="commit-flight-face commit-flight-back"><img src="images/back.webp" alt=""></div>
+  `;
+  flight.appendChild(inner);
+  document.body.appendChild(flight);
+
+  const duration = preferences.fastMode ? 190 : 320;
+  const flipDelay = preferences.fastMode ? 42 : 92;
+
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        flight.classList.add('is-moving');
+        flight.style.left = `${targetRect.left}px`;
+        flight.style.top = `${targetRect.top}px`;
+        flight.style.width = `${targetRect.width}px`;
+        flight.style.height = `${targetRect.height}px`;
+        window.setTimeout(() => inner.classList.add('is-flipped'), flipDelay);
+      });
+    });
+
+    window.setTimeout(() => {
+      showCardBack(playerPlayedEl, 'あなた');
+      flight.remove();
+      resolve();
+    }, duration + 36);
+  });
+}
+
 async function playCard(playerIndex) {
   if (inputLocked || playerIndex < 0 || playerIndex >= playerHand.length) return;
 
-  // 確定後は取り消せない。選んだカードだけを大きく持ち上げて伏せる。
+  // 確定時の出発位置を先に保存。選んだ手札から勝負枠へカードが移動する。
   inputLocked = true;
   const selectedButton = playerHandEl.querySelector(`[data-index="${playerIndex}"]`);
+  const sourceRect = selectedButton ? selectedButton.getBoundingClientRect() : null;
   playerHandEl.querySelectorAll('.hand-card').forEach((button) => { button.disabled = true; });
   if (selectedButton) {
     selectedButton.classList.remove('is-pick-pop', 'is-chosen');
     selectedButton.classList.add('is-selected', 'is-committing');
   }
   if (selectionTray) selectionTray.classList.add('is-confirming');
-  if (selectionHint) selectionHint.textContent = 'カードを確定しました。勝負を開始します。';
+  if (selectionHint) selectionHint.textContent = 'カードを確定しました。勝負枠へ伏せます。';
   sfxCardConfirm();
   safeVibrate([10, 18, 24]);
-  await wait(80);
+  await wait(70);
   if (selectionTray) selectionTray.classList.remove('is-confirming');
   selectedHandIndex = null;
 
@@ -1362,7 +1524,7 @@ async function playCard(playerIndex) {
     remembered: false,
   };
 
-  await resolveChosenBattle(pending, false);
+  await resolveChosenBattle(pending, false, sourceRect);
 }
 
 function confirmSelectedCard() {
@@ -1656,6 +1818,7 @@ applySpeedMode();
 
 if (confirmCardBtn) confirmCardBtn.addEventListener('click', confirmSelectedCard);
 if (cancelCardBtn) cancelCardBtn.addEventListener('click', cancelSelectedCard);
+setupHandSlideSelection();
 
 renderRecords();
 renderResumePanel();

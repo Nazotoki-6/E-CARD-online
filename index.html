@@ -12,11 +12,11 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="preload" as="image" href="images/back.jpeg" />
-  <link rel="preload" as="image" href="images/citizen.jpeg" />
-  <link rel="preload" as="image" href="images/emperor.jpeg" />
-  <link rel="preload" as="image" href="images/slave.jpeg" />
-  <link rel="stylesheet" href="style.css?v=18.7.6" />
+  <link rel="preload" as="image" href="images/back.webp" />
+  <link rel="preload" as="image" href="images/citizen.webp" />
+  <link rel="preload" as="image" href="images/emperor.webp" />
+  <link rel="preload" as="image" href="images/slave.webp" />
+  <link rel="stylesheet" href="style.css?v=18.7.9" />
 </head>
 <body>
   <main class="app-shell">
@@ -42,8 +42,8 @@
           <div class="battle-spark-core"></div>
           <div class="battle-spark-rays"></div>
           <div class="battle-floor"></div>
-          <div class="battle-card battle-card-emperor"><img src="images/emperor.jpeg" alt=""></div>
-          <div class="battle-card battle-card-slave"><img src="images/slave.jpeg" alt=""></div>
+          <div class="battle-card battle-card-emperor"><img src="images/emperor.webp" alt=""></div>
+          <div class="battle-card battle-card-slave"><img src="images/slave.webp" alt=""></div>
         </div>
         <div class="title-copy">
           <p class="title-kicker">PSYCHOLOGICAL CARD BATTLE</p>
@@ -65,8 +65,8 @@
         <div id="lotteryStage" class="lottery-stage" aria-hidden="true">
           <div id="lotteryCard" class="lottery-card">
             <div class="lottery-card-inner">
-              <div class="lottery-face lottery-back"><img src="images/back.jpeg" alt=""></div>
-              <div class="lottery-face lottery-front"><img id="lotteryResultImage" src="images/back.jpeg" alt="抽選前のE-CARD 裏面"></div>
+              <div class="lottery-face lottery-back"><img src="images/back.webp" alt=""></div>
+              <div class="lottery-face lottery-front"><img id="lotteryResultImage" src="images/back.webp" alt="抽選前のE-CARD 裏面"></div>
             </div>
           </div>
           <div class="lottery-aura"></div>
@@ -227,7 +227,7 @@
         <div class="battle-side cpu-battle-side">
           <p>CPU</p>
           <div id="cpuPlayed" class="played-card">
-            <img src="images/back.jpeg" alt="E-CARD 裏面" />
+            <img src="images/back.webp" alt="E-CARD 裏面" />
           </div>
         </div>
       </section>
@@ -236,7 +236,7 @@
 
       <section id="selectionTray" class="selection-tray hidden" aria-live="polite">
         <div id="selectionPreview" class="selection-preview">
-          <img src="images/back.jpeg" alt="選択中のカード">
+          <img src="images/back.webp" alt="選択中のカード">
         </div>
         <div class="selection-copy">
           <span>選択中のカード</span>
@@ -274,11 +274,11 @@
               <div><small>BASIC RULE</small><h3 id="guidePowerTitle">3種類のカードの強さ</h3></div>
             </div>
             <div class="rule-cycle" aria-label="皇帝は市民に勝ち、市民は奴隷に勝ち、奴隷は皇帝に勝つ">
-              <div class="rule-card-mini"><img src="images/emperor.jpeg" alt="皇帝カード"><strong>皇帝</strong><span>市民に勝つ</span></div>
+              <div class="rule-card-mini"><img src="images/emperor.webp" alt="皇帝カード"><strong>皇帝</strong><span>市民に勝つ</span></div>
               <div class="rule-arrow"><b>▶</b><small>勝つ</small></div>
-              <div class="rule-card-mini"><img src="images/citizen.jpeg" alt="市民カード"><strong>市民</strong><span>奴隷に勝つ</span></div>
+              <div class="rule-card-mini"><img src="images/citizen.webp" alt="市民カード"><strong>市民</strong><span>奴隷に勝つ</span></div>
               <div class="rule-arrow"><b>▶</b><small>勝つ</small></div>
-              <div class="rule-card-mini"><img src="images/slave.jpeg" alt="奴隷カード"><strong>奴隷</strong><span>皇帝に勝つ</span></div>
+              <div class="rule-card-mini"><img src="images/slave.webp" alt="奴隷カード"><strong>奴隷</strong><span>皇帝に勝つ</span></div>
             </div>
             <div class="rule-return"><span>奴隷は皇帝に勝つ</span><b>↩</b></div>
             <p class="guide-note"><strong>市民 vs 市民</strong> は引き分け。両方を捨てて次のカードへ進みます。</p>
@@ -292,12 +292,12 @@
             <div class="hand-rule-grid">
               <div class="hand-rule-side emperor-side">
                 <strong>皇帝側</strong>
-                <div class="hand-icons"><img src="images/emperor.jpeg" alt="皇帝"><span>＋</span><img src="images/citizen.jpeg" alt="市民"><b>×4</b></div>
+                <div class="hand-icons"><img src="images/emperor.webp" alt="皇帝"><span>＋</span><img src="images/citizen.webp" alt="市民"><b>×4</b></div>
               </div>
               <div class="hand-rule-vs">VS</div>
               <div class="hand-rule-side slave-side">
                 <strong>奴隷側</strong>
-                <div class="hand-icons"><img src="images/slave.jpeg" alt="奴隷"><span>＋</span><img src="images/citizen.jpeg" alt="市民"><b>×4</b></div>
+                <div class="hand-icons"><img src="images/slave.webp" alt="奴隷"><span>＋</span><img src="images/citizen.webp" alt="市民"><b>×4</b></div>
               </div>
             </div>
             <p class="guide-note">皇帝か奴隷が絡んで勝敗がついた時点で、その試合は終了します。</p>
@@ -369,12 +369,12 @@
         <div id="resultDuel" class="result-duel" aria-label="勝負したカード">
           <div class="result-player-side">
             <span>YOU</span>
-            <div id="resultPlayerCard" class="result-mini-card"><img src="images/back.jpeg" alt="あなたのカード"></div>
+            <div id="resultPlayerCard" class="result-mini-card"><img src="images/back.webp" alt="あなたのカード"></div>
           </div>
           <div class="result-duel-vs">VS</div>
           <div class="result-cpu-side">
             <span>CPU</span>
-            <div id="resultCpuCard" class="result-mini-card"><img src="images/back.jpeg" alt="CPUのカード"></div>
+            <div id="resultCpuCard" class="result-mini-card"><img src="images/back.webp" alt="CPUのカード"></div>
           </div>
         </div>
         <p id="resultText"></p>
@@ -391,6 +391,6 @@
     </div>
   </main>
 
-  <script src="script.js?v=18.7.6"></script>
+  <script src="script.js?v=18.7.9"></script>
 </body>
 </html>

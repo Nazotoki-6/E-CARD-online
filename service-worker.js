@@ -1,14 +1,14 @@
-const CACHE_NAME = 'ecard-online-v18-7-6-player-left-hardlock-20260922';
+const CACHE_NAME = 'ecard-online-v18-7-9-webp-20260923';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=18.7.6',
-  './script.js?v=18.7.6',
+  './style.css?v=18.7.9',
+  './script.js?v=18.7.9',
   './manifest.json',
-  './images/back.jpeg',
-  './images/citizen.jpeg',
-  './images/emperor.jpeg',
-  './images/slave.jpeg',
+  './images/back.webp',
+  './images/citizen.webp',
+  './images/emperor.webp',
+  './images/slave.webp',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png'
