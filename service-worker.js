@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecard-online-v18-8-5-hidden-commit-20260923';
+const CACHE_NAME = 'ecard-online-v18-8-6-straight-hand-loser-dim-20260923';
 const APP_SHELL = [
   './',
   './index.html',

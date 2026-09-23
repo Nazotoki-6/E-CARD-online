@@ -1117,10 +1117,12 @@ function renderHand() {
 
   playerHand.forEach((card, index) => {
     const button = document.createElement('button');
-    const middle = (playerHand.length - 1) / 2;
-    const distance = index - middle;
-    const rotate = distance * 7;
-    const lift = Math.abs(distance) * 12;
+
+    // v18.8.6: 手札は扇状ではなく水平一列。
+    // 既存の選択/確定アニメーションが参照する変数も0固定にして、
+    // 選択中だけ真上へ浮く挙動に統一する。
+    const rotate = 0;
+    const lift = 0;
 
     button.className = 'hand-card';
     if (selectedHandIndex === index) button.classList.add('is-selected');
