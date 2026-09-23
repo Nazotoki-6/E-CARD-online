@@ -3591,4 +3591,163 @@ body.fast-mode .commit-flight-card-inner {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
-\n\n/* v18.8.6 — straight hand row + loser-only dimming ---------------- */\n.hand {\n  align-items: flex-end;\n  justify-content: center;\n  gap: 7px;\n  overflow-x: auto;\n  overflow-y: visible;\n  padding: 24px 8px 20px;\n  scroll-padding-inline: 8px;\n}\n.hand-card {\n  margin-inline: 0;\n  --fan-rot: 0deg !important;\n  --fan-lift: 0px !important;\n  transform: translateY(0) rotate(0deg);\n}\n.hand-card:hover,\n.hand-card:active {\n  transform: translateY(-8px) rotate(0deg) scale(1.02);\n}\n.hand-card.is-selected {\n  z-index: 5;\n  transform: translateY(-22px) rotate(0deg) scale(1.07);\n}\n.hand-card.is-dimmed:hover,\n.hand-card.is-dimmed:active {\n  transform: translateY(0) rotate(0deg);\n}\n.hand.is-slide-selecting .hand-card.is-selected {\n  transform: translateY(-28px) rotate(0deg) scale(1.10) !important;\n}\n\n/* Five cards stay in one visible row on phones; as cards are spent,\n   the remaining cards can grow slightly while staying centered. */\n@media (max-width: 680px) {\n  .hand { gap: 5px; padding-left: 6px; padding-right: 6px; }\n  .hand-card {\n    flex-basis: clamp(58px, calc((100vw - 68px) / 5), 74px);\n    width: clamp(58px, calc((100vw - 68px) / 5), 74px);\n  }\n  .hand[data-count="4"] .hand-card {\n    flex-basis: clamp(64px, calc((100vw - 70px) / 4), 82px);\n    width: clamp(64px, calc((100vw - 70px) / 4), 82px);\n  }\n  .hand[data-count="3"] .hand-card,\n  .hand[data-count="2"] .hand-card,\n  .hand[data-count="1"] .hand-card {\n    flex-basis: clamp(72px, 22vw, 92px);\n    width: clamp(72px, 22vw, 92px);\n  }\n}\n\n/* Outcome readability: winner remains fully visible; only loser dims. */\n.played-card.winner-card {\n  filter: none !important;\n  opacity: 1 !important;\n  transform: scale(1) !important;\n}\n.played-card.winner-card img {\n  filter: brightness(1.08) saturate(1.05) !important;\n  opacity: 1 !important;\n}\n.played-card.loser-card {\n  filter: grayscale(.82) brightness(.42) contrast(.92) !important;\n  opacity: .62 !important;\n  transform: scale(.965) !important;\n}\n.played-card.loser-card img {\n  filter: grayscale(.32) brightness(.72) !important;\n}\n
+
+
+/* v18.8.6 — straight hand row + loser-only dimming ---------------- */
+.hand {
+  align-items: flex-end;
+  justify-content: center;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 24px 8px 20px;
+  scroll-padding-inline: 8px;
+}
+.hand-card {
+  margin-inline: 0;
+  --fan-rot: 0deg !important;
+  --fan-lift: 0px !important;
+  transform: translateY(0) rotate(0deg);
+}
+.hand-card:hover,
+.hand-card:active {
+  transform: translateY(-8px) rotate(0deg) scale(1.02);
+}
+.hand-card.is-selected {
+  z-index: 5;
+  transform: translateY(-22px) rotate(0deg) scale(1.07);
+}
+.hand-card.is-dimmed:hover,
+.hand-card.is-dimmed:active {
+  transform: translateY(0) rotate(0deg);
+}
+.hand.is-slide-selecting .hand-card.is-selected {
+  transform: translateY(-28px) rotate(0deg) scale(1.10) !important;
+}
+
+/* Five cards stay in one visible row on phones; as cards are spent,
+   the remaining cards can grow slightly while staying centered. */
+@media (max-width: 680px) {
+  .hand { gap: 5px; padding-left: 6px; padding-right: 6px; }
+  .hand-card {
+    flex-basis: clamp(58px, calc((100vw - 68px) / 5), 74px);
+    width: clamp(58px, calc((100vw - 68px) / 5), 74px);
+  }
+  .hand[data-count="4"] .hand-card {
+    flex-basis: clamp(64px, calc((100vw - 70px) / 4), 82px);
+    width: clamp(64px, calc((100vw - 70px) / 4), 82px);
+  }
+  .hand[data-count="3"] .hand-card,
+  .hand[data-count="2"] .hand-card,
+  .hand[data-count="1"] .hand-card {
+    flex-basis: clamp(72px, 22vw, 92px);
+    width: clamp(72px, 22vw, 92px);
+  }
+}
+
+/* Outcome readability: winner remains fully visible; only loser dims. */
+.played-card.winner-card {
+  filter: none !important;
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+.played-card.winner-card img {
+  filter: brightness(1.08) saturate(1.05) !important;
+  opacity: 1 !important;
+}
+.played-card.loser-card {
+  filter: grayscale(.82) brightness(.42) contrast(.92) !important;
+  opacity: .62 !important;
+  transform: scale(.965) !important;
+}
+.played-card.loser-card img {
+  filter: grayscale(.32) brightness(.72) !important;
+}
+
+
+/* v18.8.7 — winner relic flash ------------------------------------- */
+.played-card.winner-card {
+  border-color: rgba(248, 207, 112, .98) !important;
+  box-shadow:
+    0 22px 58px rgba(0,0,0,.50),
+    0 0 0 2px rgba(248,207,112,.30),
+    0 0 30px rgba(226,169,64,.48),
+    0 0 62px rgba(226,169,64,.22) !important;
+  animation: winnerRelicAura 1.02s cubic-bezier(.18,.82,.22,1) both !important;
+}
+
+.played-card.winner-card img {
+  filter: brightness(1.10) saturate(1.08) !important;
+  opacity: 1 !important;
+  transform-origin: 50% 50%;
+  animation: winnerRelicZoom .88s cubic-bezier(.18,.82,.22,1) both;
+}
+
+.played-card.winner-card::after {
+  content: '';
+  position: absolute;
+  z-index: 4;
+  inset: -24% -70%;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(108deg,
+      transparent 35%,
+      rgba(255,225,145,.04) 41%,
+      rgba(255,244,207,.88) 49%,
+      rgba(255,206,93,.28) 54%,
+      transparent 62%);
+  transform: translateX(-52%) rotate(2deg);
+  mix-blend-mode: screen;
+  animation: winnerGoldSweep .78s ease-out .06s both;
+}
+
+@keyframes winnerRelicAura {
+  0% {
+    box-shadow:
+      0 22px 58px rgba(0,0,0,.50),
+      0 0 0 0 rgba(248,207,112,0),
+      0 0 0 rgba(226,169,64,0);
+  }
+  26% {
+    box-shadow:
+      0 22px 58px rgba(0,0,0,.50),
+      0 0 0 3px rgba(255,222,142,.46),
+      0 0 40px rgba(236,181,72,.70),
+      0 0 78px rgba(236,181,72,.30);
+  }
+  100% {
+    box-shadow:
+      0 22px 58px rgba(0,0,0,.50),
+      0 0 0 2px rgba(248,207,112,.30),
+      0 0 30px rgba(226,169,64,.48),
+      0 0 62px rgba(226,169,64,.22);
+  }
+}
+
+@keyframes winnerRelicZoom {
+  0%   { transform: scale(1); filter: brightness(1.04) saturate(1.03); }
+  24%  { transform: scale(1.065); filter: brightness(1.24) saturate(1.10); }
+  58%  { transform: scale(1.025); filter: brightness(1.14) saturate(1.08); }
+  100% { transform: scale(1); filter: brightness(1.10) saturate(1.08); }
+}
+
+@keyframes winnerGoldSweep {
+  0%   { transform: translateX(-52%) rotate(2deg); opacity: 0; }
+  16%  { opacity: .92; }
+  100% { transform: translateX(54%) rotate(2deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .played-card.winner-card,
+  .played-card.winner-card img,
+  .played-card.winner-card::after {
+    animation: none !important;
+  }
+  .played-card.winner-card {
+    box-shadow:
+      0 22px 58px rgba(0,0,0,.50),
+      0 0 0 2px rgba(248,207,112,.32),
+      0 0 34px rgba(226,169,64,.42) !important;
+  }
+}
