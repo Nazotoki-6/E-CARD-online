@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecard-online-v18-8-7-winner-relic-flash-20260923';
+const CACHE_NAME = 'ecard-online-v18-8-9-winner-surface-glow-20260923';
 const APP_SHELL = [
   './',
   './index.html',
