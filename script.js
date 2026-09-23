@@ -1011,18 +1011,40 @@ function nearestHandCardIndex(clientX) {
   const buttons = Array.from(playerHandEl.querySelectorAll('.hand-card:not(:disabled)'));
   if (!buttons.length) return null;
 
-  let nearest = null;
-  let nearestDistance = Infinity;
-  buttons.forEach((button) => {
-    const rect = button.getBoundingClientRect();
-    const center = rect.left + rect.width / 2;
-    const distance = Math.abs(clientX - center);
+  // 見た目の transform（扇形の回転・選択時の拡大）ではなく、
+  // 手札レール上の論理位置で判定する。これにより端カードの判定が
+  // 選択アニメーションでズレず、左端まで安定してスライドできる。
+  const handRect = playerHandEl.getBoundingClientRect();
+  const pointerX = clientX - handRect.left + playerHandEl.scrollLeft;
+  const targets = buttons
+    .map((button) => ({
+      index: Number(button.dataset.index),
+      center: button.offsetLeft + button.offsetWidth / 2,
+    }))
+    .filter((item) => Number.isInteger(item.index))
+    .sort((a, b) => a.center - b.center);
+
+  if (!targets.length) return null;
+  if (targets.length === 1) return targets[0].index;
+
+  // 左右端は少し広めに吸着させる。画面端まで指を滑らせた時に
+  // 一番端のカードを取りこぼさないためのマグネット領域。
+  const firstBoundary = (targets[0].center + targets[1].center) / 2 + 14;
+  const last = targets.length - 1;
+  const lastBoundary = (targets[last - 1].center + targets[last].center) / 2 - 14;
+  if (pointerX <= firstBoundary) return targets[0].index;
+  if (pointerX >= lastBoundary) return targets[last].index;
+
+  let nearest = targets[0];
+  let nearestDistance = Math.abs(pointerX - nearest.center);
+  targets.slice(1).forEach((target) => {
+    const distance = Math.abs(pointerX - target.center);
     if (distance < nearestDistance) {
       nearestDistance = distance;
-      nearest = Number(button.dataset.index);
+      nearest = target;
     }
   });
-  return Number.isInteger(nearest) ? nearest : null;
+  return nearest.index;
 }
 
 function resetHandDrag() {
@@ -1047,7 +1069,7 @@ function setupHandSlideSelection() {
     handDragState.lastIndex = null;
   });
 
-  playerHandEl.addEventListener('pointermove', (event) => {
+  const move = (event) => {
     if (!handDragState.active || handDragState.pointerId !== event.pointerId || inputLocked) return;
     const dx = event.clientX - handDragState.startX;
     const dy = event.clientY - handDragState.startY;
@@ -1066,7 +1088,7 @@ function setupHandSlideSelection() {
     if (index === null || index === handDragState.lastIndex) return;
     handDragState.lastIndex = index;
     chooseHandCard(index, { allowConfirm: false, fromSlide: true });
-  }, { passive: false });
+  };
 
   const finish = (event) => {
     if (!handDragState.active || (event && handDragState.pointerId !== event.pointerId)) return;
@@ -1079,8 +1101,11 @@ function setupHandSlideSelection() {
     resetHandDrag();
   };
 
-  playerHandEl.addEventListener('pointerup', finish);
-  playerHandEl.addEventListener('pointercancel', finish);
+  // iPhoneで画面端へ指を滑らせても追跡が途切れないよう、
+  // pointermove / pointerup は window 側でも受ける。
+  window.addEventListener('pointermove', move, { passive: false, capture: true });
+  window.addEventListener('pointerup', finish, { capture: true });
+  window.addEventListener('pointercancel', finish, { capture: true });
   playerHandEl.addEventListener('lostpointercapture', () => {
     if (handDragState.active) resetHandDrag();
   });
@@ -1468,17 +1493,16 @@ function animateCommittedCardToBattle(card, sourceRect) {
   flight.style.width = `${sourceRect.width}px`;
   flight.style.height = `${sourceRect.height}px`;
 
-  const inner = document.createElement('div');
-  inner.className = 'commit-flight-card-inner';
-  inner.innerHTML = `
-    <div class="commit-flight-face commit-flight-front"><img src="${CARD_INFO[card].image}" alt=""></div>
-    <div class="commit-flight-face commit-flight-back"><img src="images/back.webp" alt=""></div>
-  `;
-  flight.appendChild(inner);
+  // 確定後は表面を一切描画しない。最初の1フレームから裏面だけを表示する。
+  // 以前は表→裏の3D反転を行っていたため、端末によって表面が一瞬見えることがあった。
+  const backImage = document.createElement('img');
+  backImage.className = 'commit-flight-back-image';
+  backImage.src = 'images/back.webp';
+  backImage.alt = '';
+  flight.appendChild(backImage);
   document.body.appendChild(flight);
 
   const duration = preferences.fastMode ? 190 : 320;
-  const flipDelay = preferences.fastMode ? 42 : 92;
 
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
@@ -1488,7 +1512,6 @@ function animateCommittedCardToBattle(card, sourceRect) {
         flight.style.top = `${targetRect.top}px`;
         flight.style.width = `${targetRect.width}px`;
         flight.style.height = `${targetRect.height}px`;
-        window.setTimeout(() => inner.classList.add('is-flipped'), flipDelay);
       });
     });
 
@@ -1836,7 +1859,7 @@ resetLotteryView();
 // 無音になる端末があるため、BGMとWeb Audio製SEを完全に分離している。
 const audioBtn = document.getElementById('audioBtn');
 const sfxBtn = document.getElementById('sfxBtn');
-const BGM_SRC = './audio/Devil_Disaster.mp3?v=18.8.3';
+const BGM_SRC = './audio/Devil_Disaster.mp3?v=18.8.4';
 
 const AUDIO = {
   bgmEnabled: preferences.bgmEnabled,

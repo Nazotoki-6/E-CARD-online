@@ -1,11 +1,11 @@
-const CACHE_NAME = 'ecard-online-v18-8-3-lottery-fade-volume55-20260923';
+const CACHE_NAME = 'ecard-online-v18-8-5-hidden-commit-20260923';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=18.8.3',
-  './script.js?v=18.8.3',
+  './style.css?v=18.8.5',
+  './script.js?v=18.8.5',
   './manifest.json',
-  './audio/Devil_Disaster.mp3?v=18.8.3',
+  './audio/Devil_Disaster.mp3?v=18.8.5',
   './images/back.webp',
   './images/citizen.webp',
   './images/emperor.webp',
@@ -78,7 +78,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.endsWith('/audio/Devil_Disaster.mp3')) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
-      let cached = await cache.match('./audio/Devil_Disaster.mp3?v=18.8.3');
+      let cached = await cache.match('./audio/Devil_Disaster.mp3?v=18.8.5');
       if (!cached) cached = await cache.match(request, { ignoreSearch: true });
 
       if (request.headers.has('range') && cached) {
@@ -87,7 +87,7 @@ self.addEventListener('fetch', (event) => {
 
       try {
         const network = await fetch(request);
-        if (network && network.status === 200) cache.put('./audio/Devil_Disaster.mp3?v=18.8.3', network.clone());
+        if (network && network.status === 200) cache.put('./audio/Devil_Disaster.mp3?v=18.8.5', network.clone());
         return network;
       } catch (error) {
         if (cached) return cached;

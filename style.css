@@ -3574,3 +3574,20 @@ body.fast-mode .commit-flight-card-inner {
     transition-duration: .01ms !important;
   }
 }
+
+/* v18.8.5 — committed cards are concealed from the very first frame. */
+.commit-flight-card {
+  overflow: hidden;
+  background: #070707 url("images/back.webp") center / cover no-repeat;
+}
+.commit-flight-back-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 2px solid rgba(181,139,69,.62);
+  border-radius: 12px;
+  box-sizing: border-box;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
