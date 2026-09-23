@@ -818,7 +818,10 @@ async function runSideLottery() {
   const saved = loadSeriesState();
   if (saved) {
     const ok = window.confirm('途中の12戦マッチがあります。新しく抽選すると途中データは上書きされます。新しい対戦を始めますか？');
-    if (!ok) return;
+    if (!ok) {
+      stopBgm();
+      return;
+    }
     clearSeriesState();
   }
 
@@ -861,6 +864,9 @@ async function runSideLottery() {
   await wait(1250);
   if (drawSequenceId !== lotterySequenceId) return;
   lotteryDrawing = false;
+  // 抽選演出が完全に終わった瞬間からBGMを聞かせる。
+  // 抽選中はiPhone対策として無音で再生を準備し、ここで曲頭へ戻して解除する。
+  startBgmAfterLottery();
   startSeries(chosenSide);
 }
 
@@ -1679,7 +1685,7 @@ function showMatchResult(playerWon, playerCard, cpuCard, autoResolved = false) {
 
 function showSeriesResult() {
   seriesComplete = true;
-  stopBgm();
+  stopBgm(true);
   releaseWakeLock();
   recordSeriesResult();
   clearSeriesState();
@@ -1761,7 +1767,7 @@ function backToSetup() {
   battleSequenceId += 1;
   cpuPersonality = null;
   if (victoryBurst) victoryBurst.classList.add('hidden');
-  stopBgm();
+  stopBgm(true);
   releaseWakeLock();
   countdownOverlay.classList.add('hidden');
   if (matchIntro) matchIntro.classList.add('hidden');
@@ -1824,26 +1830,47 @@ renderRecords();
 renderResumePanel();
 resetLotteryView();
 
-// ---- オリジナル手続き生成BGM / 効果音 -------------------------------
-// 外部音源不要。Web Audio APIでブラウザ内生成するためGitHub Pagesで動作する。
+// ---- MP3 BGM / 効果音 ------------------------------------------------
+// v18.8.3: BGMはHTMLAudioElementで直接再生。抽選中は無音プリロールし、抽選後にフェードイン。
+// iPhone Safari / ホーム画面PWAではMediaElementSource→AudioContext経由が
+// 無音になる端末があるため、BGMとWeb Audio製SEを完全に分離している。
 const audioBtn = document.getElementById('audioBtn');
 const sfxBtn = document.getElementById('sfxBtn');
+const BGM_SRC = './audio/Devil_Disaster.mp3?v=18.8.3';
 
 const AUDIO = {
   bgmEnabled: preferences.bgmEnabled,
   sfxEnabled: preferences.sfxEnabled,
   ctx: null,
   master: null,
-  musicGain: null,
+  musicGain: null, // 旧手続きBGM互換用。MP3 BGMには使用しない。
   sfxGain: null,
   compressor: null,
-  timer: null,
-  step: 0,
-  musicBaseGain: 0.36,
+  bgmElement: null,
+  bgmBaseVolume: 1.0, // 音源自体をv18.8.3で55%相当に調整済み
   duckToken: 0,
+  bgmPlayPending: false,
 };
 
+function ensureBgmTrack() {
+  if (!AUDIO.bgmElement) {
+    const existing = document.getElementById('bgmTrack');
+    const track = existing || new Audio(BGM_SRC);
+    if (!existing) track.src = BGM_SRC;
+    track.loop = true;
+    track.preload = 'auto';
+    track.playsInline = true;
+    track.setAttribute('playsinline', '');
+    track.setAttribute('webkit-playsinline', '');
+    track.setAttribute('aria-hidden', 'true');
+    try { track.volume = AUDIO.bgmBaseVolume; } catch (error) { /* iOSは端末音量を優先 */ }
+    AUDIO.bgmElement = track;
+  }
+  return AUDIO.bgmElement;
+}
+
 function ensureAudio() {
+  // Web AudioはSE専用。BGM再生の成否には影響させない。
   if (!AUDIO.ctx) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return false;
@@ -1854,17 +1881,15 @@ function ensureAudio() {
     AUDIO.sfxGain = AUDIO.ctx.createGain();
     AUDIO.compressor = AUDIO.ctx.createDynamicsCompressor();
 
-    // v17.2: iPhoneでも聞き取りやすいよう、BGMと効果音を全体的に増幅。
-    // コンプレッサーを最後段に入れて、複数音が重なった時のピークも抑える。
-    AUDIO.master.gain.value = 0.95;
-    AUDIO.musicGain.gain.value = AUDIO.musicBaseGain;
-    AUDIO.sfxGain.gain.value = 0.50;
+    AUDIO.master.gain.value = 2.10;
+    AUDIO.musicGain.gain.value = 1;
+    AUDIO.sfxGain.gain.value = 1.15;
 
-    AUDIO.compressor.threshold.value = -10;
-    AUDIO.compressor.knee.value = 12;
-    AUDIO.compressor.ratio.value = 4;
-    AUDIO.compressor.attack.value = 0.003;
-    AUDIO.compressor.release.value = 0.22;
+    AUDIO.compressor.threshold.value = -18;
+    AUDIO.compressor.knee.value = 8;
+    AUDIO.compressor.ratio.value = 12;
+    AUDIO.compressor.attack.value = 0.0015;
+    AUDIO.compressor.release.value = 0.16;
 
     AUDIO.musicGain.connect(AUDIO.master);
     AUDIO.sfxGain.connect(AUDIO.master);
@@ -1872,9 +1897,170 @@ function ensureAudio() {
     AUDIO.compressor.connect(AUDIO.ctx.destination);
   }
 
-  if (AUDIO.ctx.state === 'suspended') AUDIO.ctx.resume();
+  if (AUDIO.ctx.state === 'suspended') {
+    const resumed = AUDIO.ctx.resume();
+    if (resumed && typeof resumed.catch === 'function') resumed.catch(() => {});
+  }
   return true;
 }
+
+function setBgmElementVolume(value) {
+  const track = ensureBgmTrack();
+  if (!track) return;
+  try { track.volume = Math.max(0, Math.min(1, value)); } catch (error) { /* iOSでは変更不可の場合あり */ }
+}
+
+function primeBgmForLottery() {
+  if (!AUDIO.bgmEnabled) return;
+  const track = ensureBgmTrack();
+  if (!track) return;
+
+  // iPhone/PWA対策: ユーザー操作中に“無音で”再生権だけ確保する。
+  // 実際に聞こえるのは抽選終了後。
+  track.muted = true;
+  try { track.currentTime = 0; } catch (error) { /* loaded前は無視 */ }
+  if (!track.paused || AUDIO.bgmPlayPending) return;
+
+  AUDIO.bgmPlayPending = true;
+  let playPromise;
+  try {
+    playPromise = track.play();
+  } catch (error) {
+    AUDIO.bgmPlayPending = false;
+    console.warn('BGM pre-roll failed:', error);
+    return;
+  }
+  if (playPromise && typeof playPromise.then === 'function') {
+    playPromise
+      .then(() => { AUDIO.bgmPlayPending = false; })
+      .catch((error) => {
+        AUDIO.bgmPlayPending = false;
+        console.warn('BGM pre-roll was blocked:', error);
+      });
+  } else {
+    AUDIO.bgmPlayPending = false;
+  }
+}
+
+function startBgmAfterLottery() {
+  if (!AUDIO.bgmEnabled) return;
+  const track = ensureBgmTrack();
+  if (!track) return;
+
+  // 音源の先頭2.8秒には実音量フェードインを焼き込み済み。
+  // いったん曲頭へ戻すことで、抽選結果が出た直後から自然に立ち上がる。
+  try { track.currentTime = 0; } catch (error) { /* loaded前は無視 */ }
+  track.muted = false;
+  setBgmElementVolume(AUDIO.bgmBaseVolume);
+
+  if (track.paused) {
+    AUDIO.bgmPlayPending = true;
+    let playPromise;
+    try { playPromise = track.play(); } catch (error) {
+      AUDIO.bgmPlayPending = false;
+      console.warn('BGM playback failed after lottery:', error);
+      return;
+    }
+    if (playPromise && typeof playPromise.then === 'function') {
+      playPromise
+        .then(() => { AUDIO.bgmPlayPending = false; })
+        .catch((error) => {
+          AUDIO.bgmPlayPending = false;
+          console.warn('BGM playback was blocked after lottery; retry on next touch:', error);
+        });
+    } else {
+      AUDIO.bgmPlayPending = false;
+    }
+  }
+}
+
+function startBgm() {
+  if (!AUDIO.bgmEnabled) return;
+  const track = ensureBgmTrack();
+  if (!track || !track.paused || AUDIO.bgmPlayPending) return;
+
+  track.muted = false;
+  setBgmElementVolume(AUDIO.bgmBaseVolume);
+  AUDIO.bgmPlayPending = true;
+  let playPromise;
+  try {
+    playPromise = track.play();
+  } catch (error) {
+    AUDIO.bgmPlayPending = false;
+    console.warn('BGM playback failed:', error);
+    return;
+  }
+
+  if (playPromise && typeof playPromise.then === 'function') {
+    playPromise
+      .then(() => { AUDIO.bgmPlayPending = false; })
+      .catch((error) => {
+        AUDIO.bgmPlayPending = false;
+        console.warn('BGM playback was blocked; retry on next touch:', error);
+      });
+  } else {
+    AUDIO.bgmPlayPending = false;
+  }
+}
+
+function stopBgm(reset = false) {
+  const track = AUDIO.bgmElement || document.getElementById('bgmTrack');
+  if (!track) return;
+  track.pause();
+  AUDIO.bgmPlayPending = false;
+  if (reset) {
+    try { track.currentTime = 0; } catch (error) { /* loaded前は無視 */ }
+  }
+}
+
+function duckMusic(depth = 0.30, hold = 0.18, recover = 0.34) {
+  if (!AUDIO.bgmEnabled) return;
+  const track = ensureBgmTrack();
+  if (!track || track.paused) return;
+
+  const token = ++AUDIO.duckToken;
+  const base = AUDIO.bgmBaseVolume;
+  const target = Math.max(0.05, Math.min(1, base * depth));
+  setBgmElementVolume(target);
+
+  window.setTimeout(() => {
+    if (token !== AUDIO.duckToken) return;
+    // iOS SafariはJSからのmedia volume変更を無視する場合がある。
+    // その場合でも再生自体は止めず、他環境では滑らかに戻す。
+    const started = performance.now();
+    const from = target;
+    const durationMs = Math.max(60, recover * 1000);
+    const step = (now) => {
+      if (token !== AUDIO.duckToken) return;
+      const t = Math.min(1, (now - started) / durationMs);
+      setBgmElementVolume(from + (base - from) * t);
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, Math.max(0, hold * 1000));
+}
+
+function resumeBgmFromUserGesture() {
+  if (!AUDIO.bgmEnabled || seriesComplete) return;
+  if (!gameScreen.classList.contains('hidden') && matchResults.length < TOTAL_MATCHES) startBgm();
+}
+
+// iOS/PWAは「ユーザーが画面に触れた瞬間」のplay()が最も確実。
+// 抽選中は無音で再生権だけ確保し、抽選終了後に曲頭へ戻して聞こえる状態にする。
+if (lotteryBtn) {
+  lotteryBtn.addEventListener('pointerdown', () => {
+    if (AUDIO.bgmEnabled) primeBgmForLottery();
+    if (AUDIO.sfxEnabled) ensureAudio();
+  }, { passive: true });
+  lotteryBtn.addEventListener('touchstart', () => {
+    if (AUDIO.bgmEnabled) primeBgmForLottery();
+    if (AUDIO.sfxEnabled) ensureAudio();
+  }, { passive: true });
+}
+
+// バックグラウンド復帰後に自動再開がiOSに拒否されても、次の1タップで復帰する。
+document.addEventListener('pointerdown', resumeBgmFromUserGesture, { capture: true, passive: true });
+document.addEventListener('touchstart', resumeBgmFromUserGesture, { capture: true, passive: true });
 
 function tone(freq, duration = 0.12, type = 'square', volume = 0.18, when = 0, destination = null) {
   const isMusic = destination === AUDIO.musicGain;
@@ -1944,115 +2130,6 @@ function lowImpact(volume = 0.13, when = 0) {
   noiseBurst(0.075, volume * 0.72, when, null, 90);
 }
 
-function duckMusic(depth = 0.30, hold = 0.18, recover = 0.34) {
-  if (!AUDIO.bgmEnabled || !ensureAudio() || !AUDIO.musicGain) return;
-  const ctx = AUDIO.ctx;
-  const gain = AUDIO.musicGain.gain;
-  const token = ++AUDIO.duckToken;
-  const now = ctx.currentTime;
-  const target = Math.max(0.025, AUDIO.musicBaseGain * depth);
-  gain.cancelScheduledValues(now);
-  gain.setValueAtTime(Math.max(0.0001, gain.value), now);
-  gain.linearRampToValueAtTime(target, now + 0.035);
-  gain.setValueAtTime(target, now + hold);
-  gain.linearRampToValueAtTime(AUDIO.musicBaseGain, now + hold + recover);
-  window.setTimeout(() => {
-    if (token !== AUDIO.duckToken || !AUDIO.musicGain) return;
-    AUDIO.musicGain.gain.value = AUDIO.musicBaseGain;
-  }, Math.ceil((hold + recover + 0.08) * 1000));
-}
-
-function bgmTensionStage() {
-  const play = Number(playInMatch || 1);
-  if (play >= 4 || playerHand.length <= 2) return 2;
-  if (play >= 3 || playerHand.length <= 3) return 1;
-  return 0;
-}
-
-function bgmGroupVariant() {
-  // 3試合ごとに音階とアクセントを切り替え、12戦の長時間プレイで単調になりにくくする。
-  return Math.max(0, Math.min(3, Math.floor((Number(currentMatch || 1) - 1) / MATCHES_PER_GROUP)));
-}
-
-function bgmTick() {
-  if (!AUDIO.bgmEnabled || !AUDIO.ctx) return;
-
-  // v18.4: 3段階で緊張が増すBGM。
-  // 序盤＝低い脈動、中盤＝金属的な刻み、終盤＝鼓動・不協和・高音を増やす。
-  const stage = bgmTensionStage();
-  const groupVariant = bgmGroupVariant();
-  const transpose = [1, 0.943874, 1.059463, 0.890899][groupVariant];
-  const bassByStage = [
-    [73.42, 73.42, 69.30, 77.78, 73.42, 82.41, 69.30, 65.41],
-    [73.42, 69.30, 77.78, 73.42, 65.41, 69.30, 82.41, 77.78],
-    [69.30, 73.42, 65.41, 77.78, 69.30, 82.41, 65.41, 61.74],
-  ];
-  const tensionLead = [146.83, 0, 155.56, 0, 146.83, 0, 138.59, 0,
-                       146.83, 0, 164.81, 0, 155.56, 0, 138.59, 0];
-  const i = AUDIO.step % 16;
-  const bass = bassByStage[stage];
-
-  if (i % 2 === 0) {
-    tone(bass[(i / 2) % bass.length] * transpose, 0.30 - stage * 0.025, 'triangle', 0.17 + stage * 0.018, 0, AUDIO.musicGain);
-  }
-
-  // 二連の鼓動。終盤ほど太く・近くなる。
-  if (i === 0 || i === 8 || (stage === 2 && i === 12)) {
-    tone((stage === 2 ? 82.41 : 98.00) * transpose, 0.09, 'sawtooth', 0.10 + stage * 0.018, 0, AUDIO.musicGain);
-    tone((stage === 2 ? 92.50 : 116.54) * transpose, 0.065, 'sawtooth', 0.072 + stage * 0.012, stage === 2 ? 0.075 : 0.10, AUDIO.musicGain);
-  }
-
-  if (tensionLead[i]) {
-    tone(tensionLead[i] * transpose, 0.13, 'square', 0.046 + stage * 0.012, 0.025, AUDIO.musicGain);
-  }
-
-  // 時計／金属片のような刻み。
-  if (i % 2 === 1) {
-    tone((stage === 0 ? 1174.66 : stage === 1 ? 1318.51 : 1480.00) * [1, 1.06, .94, 1.12][groupVariant],
-         0.016, 'square', 0.015 + stage * 0.006, 0, AUDIO.musicGain);
-  }
-
-  if (stage >= 1 && (i === 5 || i === 13)) {
-    tone(311.13 * transpose, 0.22, 'sine', 0.038 + stage * 0.008, 0, AUDIO.musicGain);
-    tone(329.63 * transpose, 0.20, 'sine', 0.027 + stage * 0.006, 0.035, AUDIO.musicGain);
-  }
-
-  // 最終局面だけ、低い金属音と半音衝突を加える。
-  if (stage === 2 && (i === 3 || i === 11)) {
-    tone(55.00, 0.26, 'sine', 0.075, 0, AUDIO.musicGain);
-    tone(207.65, 0.15, 'triangle', 0.040, 0.02, AUDIO.musicGain);
-    tone(220.00, 0.15, 'triangle', 0.035, 0.035, AUDIO.musicGain);
-    noiseBurst(0.025, 0.010, 0.02, AUDIO.musicGain, 2200);
-  }
-
-  // グループごとに異なる疎なアクセントを加える。主旋律を増やしすぎず、雰囲気だけ変える。
-  if (groupVariant === 1 && i === 7) {
-    tone(246.94 * transpose, 0.19, 'triangle', 0.026, 0, AUDIO.musicGain);
-  } else if (groupVariant === 2 && (i === 2 || i === 10)) {
-    noiseBurst(0.018, 0.008, 0, AUDIO.musicGain, 2600);
-  } else if (groupVariant === 3 && i === 15) {
-    tone(110 * transpose, 0.34, 'sine', 0.042, 0, AUDIO.musicGain);
-  }
-
-  AUDIO.step += 1;
-}
-
-function startBgm() {
-  if (!AUDIO.bgmEnabled || !ensureAudio()) return;
-  if (AUDIO.timer) return;
-  AUDIO.step = 0;
-  bgmTick();
-  // 少し速い刻みで、常に張り詰めたテンポを維持する。
-  AUDIO.timer = window.setInterval(bgmTick, 205);
-}
-
-function stopBgm() {
-  if (AUDIO.timer) {
-    clearInterval(AUDIO.timer);
-    AUDIO.timer = null;
-  }
-}
-
 function sfxIntermission() {
   if (!AUDIO.sfxEnabled || !ensureAudio()) return;
   duckMusic(0.45, 0.18, 0.34);
@@ -2097,10 +2174,10 @@ function sfxCountdown(number) {
 function sfxOpen() {
   // BGMを一瞬沈めてから、低い衝撃＋金属音を前面に出す。
   duckMusic(0.17, 0.20, 0.38);
-  lowImpact(0.19);
-  noiseBurst(0.095, 0.12, 0.018, null, 120);
-  metallicHit(220, 0.15, 0.045);
-  tone(659.25, 0.18, 'triangle', 0.090, 0.105);
+  lowImpact(0.24);
+  noiseBurst(0.105, 0.16, 0.018, null, 120);
+  metallicHit(220, 0.19, 0.045);
+  tone(659.25, 0.20, 'triangle', 0.12, 0.105);
 }
 
 function sfxCard() {
