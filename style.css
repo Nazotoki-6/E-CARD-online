@@ -562,13 +562,29 @@ h1 {
 }
 
 .played-card.is-set {
-  animation: cardSet .25s cubic-bezier(.2,.85,.25,1) both;
+  animation: cardSet .34s cubic-bezier(.16,.84,.24,1) both;
 }
 
 @keyframes cardSet {
-  0% { transform: translateY(-22px) scale(.94); opacity: 0; }
-  70% { transform: translateY(3px) scale(1.01); opacity: 1; }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
+  0% {
+    transform: translateY(-30px) scale(.95);
+    opacity: 0;
+    box-shadow: 0 10px 28px rgba(0,0,0,.24);
+  }
+  58% {
+    transform: translateY(5px) scale(1.025,.975);
+    opacity: 1;
+    box-shadow: 0 8px 18px rgba(0,0,0,.72), 0 0 18px rgba(210,159,70,.14);
+  }
+  76% {
+    transform: translateY(-2px) scale(.995,1.012);
+    box-shadow: 0 22px 54px rgba(0,0,0,.50), 0 0 22px rgba(210,159,70,.10);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    box-shadow: 0 18px 50px rgba(0,0,0,.42), 0 0 16px rgba(210,159,70,.08);
+  }
 }
 
 .played-card.flip-out {
@@ -3790,4 +3806,935 @@ body.fast-mode .commit-flight-card-inner {
     animation: none !important;
     opacity: .56;
   }
+}
+
+
+/* v18.9.0 — tactile card landing + slave reversal climax ------------ */
+.played-card.is-set::after {
+  animation: cardLandGlint .34s ease-out both;
+}
+
+@keyframes cardLandGlint {
+  0%, 38% { transform: translateX(-120%); opacity: 0; }
+  58% { transform: translateX(-15%); opacity: .34; }
+  100% { transform: translateX(88%); opacity: 0; }
+}
+
+.battle-zone.reversal-impact {
+  position: relative;
+  animation: reversalZoneHit .58s cubic-bezier(.22,.75,.24,1) both;
+}
+
+.battle-zone.reversal-impact::after {
+  content: '';
+  position: absolute;
+  inset: -12% -8%;
+  z-index: 7;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,218,132,.28) 0 8%, transparent 28%),
+    radial-gradient(circle at 50% 50%, rgba(170,36,25,.24) 0 18%, transparent 62%);
+  mix-blend-mode: screen;
+  animation: reversalShock .72s ease-out both;
+}
+
+.played-card.slave-upset {
+  z-index: 5;
+  animation: slaveUpsetSurge .92s cubic-bezier(.17,.86,.24,1) both !important;
+}
+
+.played-card.emperor-fallen {
+  z-index: 4;
+  animation: emperorFallHit .76s cubic-bezier(.22,.72,.24,1) both !important;
+}
+
+.victory-burst.is-special::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(118deg, transparent 0 43%, rgba(255,219,133,.42) 48%, rgba(151,28,24,.30) 51%, transparent 57%),
+    radial-gradient(circle at 50% 48%, rgba(210,55,32,.22), transparent 48%);
+  opacity: 0;
+  animation: reversalFlash .78s ease-out .05s both;
+}
+
+.victory-burst.is-special .victory-burst-core::after {
+  content: '';
+  position: absolute;
+  width: min(72vw, 430px);
+  height: min(72vw, 430px);
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border: 2px solid rgba(255,218,134,.58);
+  box-shadow:
+    0 0 24px rgba(255,214,126,.34),
+    inset 0 0 28px rgba(178,45,27,.18);
+  opacity: 0;
+  animation: reversalSeal 1.05s cubic-bezier(.16,.78,.2,1) .04s both;
+}
+
+@keyframes reversalZoneHit {
+  0% { transform: translateX(0); }
+  18% { transform: translateX(-3px); }
+  34% { transform: translateX(3px); }
+  50% { transform: translateX(-1.5px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes reversalShock {
+  0% { opacity: 0; transform: scale(.72); filter: blur(8px); }
+  28% { opacity: 1; transform: scale(1.02); filter: blur(0); }
+  100% { opacity: 0; transform: scale(1.18); filter: blur(2px); }
+}
+
+@keyframes slaveUpsetSurge {
+  0% { transform: scale(1); }
+  28% { transform: scale(1.085); box-shadow: 0 0 0 2px rgba(255,215,126,.48), 0 0 48px rgba(199,91,42,.56); }
+  62% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+@keyframes emperorFallHit {
+  0% { transform: scale(1) rotate(0); }
+  22% { transform: scale(.96) rotate(-1.2deg); }
+  40% { transform: scale(.965) rotate(.8deg); }
+  100% { transform: scale(.965) rotate(0); }
+}
+
+@keyframes reversalFlash {
+  0% { opacity: 0; transform: scale(.86); }
+  22% { opacity: .95; }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+@keyframes reversalSeal {
+  0% { opacity: 0; transform: scale(.58) rotate(-10deg); }
+  36% { opacity: .82; transform: scale(1.02) rotate(0); }
+  100% { opacity: 0; transform: scale(1.34) rotate(5deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .played-card.is-set,
+  .played-card.is-set::after,
+  .battle-zone.reversal-impact,
+  .battle-zone.reversal-impact::after,
+  .played-card.slave-upset,
+  .played-card.emperor-fallen,
+  .victory-burst.is-special::before,
+  .victory-burst.is-special .victory-burst-core::after {
+    animation: none !important;
+  }
+  .played-card.slave-upset {
+    box-shadow: 0 0 0 2px rgba(255,215,126,.40), 0 0 36px rgba(199,91,42,.42) !important;
+  }
+}
+
+
+/* v18.9.1 — altar / countdown tension / result hierarchy ---------------- */
+.battle-zone {
+  background:
+    radial-gradient(ellipse at 50% 54%, rgba(112,72,26,.13) 0 22%, transparent 57%),
+    linear-gradient(180deg, rgba(17,14,13,.88), rgba(7,8,10,.96));
+  border-color: rgba(162,120,58,.40);
+  box-shadow:
+    inset 0 0 0 1px rgba(248,220,164,.025),
+    inset 0 -36px 72px rgba(0,0,0,.34),
+    0 18px 46px rgba(0,0,0,.34);
+  transition: box-shadow .24s ease, background .24s ease, border-color .24s ease;
+}
+
+.duel-altar {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 52%;
+  width: min(68%, 360px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scaleY(.42);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: .62;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(221,177,89,.12) 0 2deg, transparent 2deg 18deg),
+    radial-gradient(circle, transparent 0 25%, rgba(200,150,66,.08) 26% 27%, transparent 28% 44%, rgba(200,150,66,.10) 45% 46%, transparent 47%);
+  box-shadow:
+    inset 0 0 0 1px rgba(222,180,94,.12),
+    0 0 38px rgba(173,118,41,.08);
+  transition: opacity .24s ease, filter .24s ease, transform .24s ease;
+}
+.duel-altar-ring, .duel-altar-seal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.duel-altar-ring.ring-outer {
+  width: 86%;
+  height: 86%;
+  border: 1px solid rgba(232,193,112,.22);
+  box-shadow: inset 0 0 18px rgba(217,166,77,.06), 0 0 18px rgba(217,166,77,.05);
+}
+.duel-altar-ring.ring-inner {
+  width: 54%;
+  height: 54%;
+  border: 1px dashed rgba(232,193,112,.20);
+}
+.duel-altar-seal {
+  width: 23%;
+  height: 23%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid rgba(236,198,117,.25);
+  border-radius: 18%;
+  box-shadow: inset 0 0 0 5px rgba(175,119,42,.025);
+}
+
+/* 3→2→1: the table closes in and the altar becomes the only visible focus. */
+.battle-zone.countdown-tense {
+  border-color: rgba(178,128,58,.52);
+  box-shadow:
+    inset 0 0 88px rgba(0,0,0,.74),
+    inset 0 -30px 70px rgba(0,0,0,.62),
+    0 18px 52px rgba(0,0,0,.46);
+}
+.battle-zone.countdown-tense .battle-side,
+.battle-zone.countdown-tense .versus {
+  transition: filter .24s ease, opacity .24s ease;
+}
+.battle-zone.countdown-step-3 .battle-side,
+.battle-zone.countdown-step-3 .versus { filter: brightness(.82); }
+.battle-zone.countdown-step-2 .battle-side,
+.battle-zone.countdown-step-2 .versus { filter: brightness(.68); }
+.battle-zone.countdown-step-1 .battle-side,
+.battle-zone.countdown-step-1 .versus { filter: brightness(.53); }
+.battle-zone.countdown-step-3 .duel-altar { opacity: .72; filter: drop-shadow(0 0 10px rgba(215,157,66,.10)); }
+.battle-zone.countdown-step-2 .duel-altar { opacity: .84; filter: drop-shadow(0 0 18px rgba(215,157,66,.18)); }
+.battle-zone.countdown-step-1 .duel-altar { opacity: 1; filter: drop-shadow(0 0 28px rgba(224,162,69,.30)); transform: translate(-50%, -50%) scaleY(.42) scale(1.04); }
+.battle-zone.countdown-open {
+  box-shadow:
+    inset 0 0 32px rgba(255,214,126,.10),
+    0 18px 58px rgba(0,0,0,.40),
+    0 0 42px rgba(220,160,62,.14);
+}
+.battle-zone.countdown-open .battle-side,
+.battle-zone.countdown-open .versus { filter: brightness(1.08); opacity: 1; }
+.battle-zone.countdown-open .duel-altar {
+  opacity: 1;
+  filter: drop-shadow(0 0 38px rgba(255,201,98,.48));
+  animation: altarOpenPulse .42s ease-out both;
+}
+@keyframes altarOpenPulse {
+  0% { transform: translate(-50%, -50%) scaleY(.42) scale(.92); }
+  45% { transform: translate(-50%, -50%) scaleY(.42) scale(1.12); }
+  100% { transform: translate(-50%, -50%) scaleY(.42) scale(1); }
+}
+
+/* Match result: WIN / LOSE is the first thing the eye reads. */
+.cinematic-result-card:not(.series-result) #resultTitle {
+  margin: 4px 0 6px;
+  font-family: Georgia, 'Times New Roman', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  font-size: clamp(56px, 15vw, 78px);
+  line-height: .92;
+  letter-spacing: .12em;
+  font-weight: 900;
+}
+.cinematic-result-card:not(.series-result) #resultText {
+  max-width: 390px;
+  margin: 6px auto 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(220,214,202,.70);
+}
+.cinematic-result-card:not(.series-result) #resultEyebrow {
+  font-size: 9px;
+  letter-spacing: .22em;
+  opacity: .72;
+}
+.cinematic-result-card:not(.series-result) .result-stamp {
+  opacity: .62;
+}
+.result-card.result-draw:not(.series-result) #resultTitle {
+  color: #c5d0d5;
+  text-shadow: 0 0 28px rgba(130,157,169,.16);
+}
+
+@media (max-width: 680px) {
+  .duel-altar { width: min(78%, 300px); top: 54%; }
+  .cinematic-result-card:not(.series-result) #resultTitle { font-size: clamp(52px, 17vw, 70px); }
+  .cinematic-result-card:not(.series-result) #resultText { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-zone.countdown-open .duel-altar { animation: none !important; }
+}
+
+
+/* ====================================================================
+   v18.9.5 — final responsive pass
+   Small phones / standard phones / large phones / tablet / desktop
+   ==================================================================== */
+html, body { max-width: 100%; overflow-x: hidden; }
+.app-shell { padding-inline: clamp(10px, 2.4vw, 20px); }
+.topbar, .topbar-actions, .status-row, .battle-zone, .hand-section,
+.result-card, .panel { min-width: 0; }
+.topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+/* Keep the duel readable without either card colliding with VS. */
+.played-card {
+  width: clamp(112px, 22vw, 200px);
+  max-width: 100%;
+}
+.battle-side { min-width: 0; }
+.battle-side p { white-space: nowrap; }
+
+/* Phones: cards always fit side-by-side, including 320px devices. */
+@media (max-width: 680px) {
+  .app-shell { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  .game { gap: 10px; }
+  .compact-match-bar {
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+  .compact-match-bar::-webkit-scrollbar { display: none; }
+  .series-progress { overflow-x: hidden; }
+
+  .battle-zone {
+    grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) !important;
+    gap: 6px;
+    min-height: clamp(220px, 63vw, 272px);
+    padding: 13px 3px;
+  }
+  .battle-zone .versus {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+    font-size: 13px;
+  }
+  .played-card {
+    width: clamp(98px, 34vw, 145px);
+    border-radius: 11px;
+  }
+  .battle-side p { margin-bottom: 6px; font-size: 11px; }
+  .duel-altar { width: min(82%, 292px); top: 54%; }
+
+  .message-box {
+    min-height: 42px;
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+  .match-log-panel summary { min-height: 40px; display: flex; align-items: center; }
+
+  .hand-section {
+    margin-left: -4px;
+    margin-right: -4px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+  .hand-title-row { gap: 8px; }
+  .hand-title-row h2 { flex: 0 0 auto; }
+  .hand-meta { min-width: 0; justify-content: flex-end; flex-wrap: wrap; }
+  .privacy-badge { max-width: 100%; white-space: nowrap; }
+  .hand {
+    width: 100%;
+    gap: 4px;
+    padding: 25px 3px 18px;
+    overflow-x: hidden;
+  }
+  .hand-card {
+    flex: 0 0 clamp(54px, calc((100vw - 62px) / 5), 74px);
+    width: clamp(54px, calc((100vw - 62px) / 5), 74px);
+    min-width: 0;
+  }
+  .hand[data-count="4"] .hand-card {
+    flex-basis: clamp(62px, calc((100vw - 66px) / 4), 82px);
+    width: clamp(62px, calc((100vw - 66px) / 4), 82px);
+  }
+  .hand[data-count="3"] .hand-card,
+  .hand[data-count="2"] .hand-card,
+  .hand[data-count="1"] .hand-card {
+    flex-basis: clamp(72px, 22vw, 92px);
+    width: clamp(72px, 22vw, 92px);
+  }
+  .hand-card.is-selected {
+    transform: translateY(-20px) rotate(0deg) scale(1.055) !important;
+  }
+  .hand.is-slide-selecting .hand-card.is-selected {
+    transform: translateY(-24px) rotate(0deg) scale(1.075) !important;
+  }
+
+  .result-overlay { padding-inline: max(8px, env(safe-area-inset-left), env(safe-area-inset-right)); }
+  .cinematic-result-card { width: min(100%, 440px); }
+  .result-duel { gap: 6px; }
+  .result-mini-card { width: clamp(72px, 22vw, 96px); }
+  .result-duel-vs { min-width: 36px; min-height: 36px; font-size: 11px; }
+  .result-actions button { min-height: 48px; }
+}
+
+/* Very small phones (e.g. 320–360 CSS px). */
+@media (max-width: 360px) {
+  body.game-active .topbar-actions { gap: 4px; }
+  body.game-active .topbar-actions .ghost-btn { min-height: 40px; }
+  .compact-match-bar { padding: 8px 7px; gap: 5px; font-size: 9px; }
+  .compact-match-bar b { font-size: 10px; }
+  .progress-dot { width: 15px; height: 15px; font-size: 7px; }
+
+  .battle-zone {
+    grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr) !important;
+    gap: 3px;
+    min-height: 214px;
+    padding-inline: 1px;
+  }
+  .battle-zone .versus {
+    min-width: 38px;
+    min-height: 38px;
+    width: 38px;
+    height: 38px;
+    font-size: 11px;
+  }
+  .played-card { width: clamp(92px, 31.5vw, 108px); }
+  .duel-altar { width: min(86%, 250px); }
+
+  .hand-section { margin-left: -2px; margin-right: -2px; padding-left: 4px; padding-right: 4px; }
+  .hand-title-row h2 { font-size: 14px; }
+  .privacy-badge { font-size: 8px; padding-inline: 5px; }
+  .hand-meta { font-size: 9px; }
+  .hand { gap: 3px; padding-inline: 1px; }
+  .hand-card {
+    flex-basis: clamp(50px, calc((100vw - 54px) / 5), 58px);
+    width: clamp(50px, calc((100vw - 54px) / 5), 58px);
+  }
+  .hand-card.is-selected::before { font-size: 7px; bottom: -21px; }
+
+  .cinematic-result-card:not(.series-result) #resultTitle {
+    font-size: clamp(45px, 16vw, 58px);
+    letter-spacing: .08em;
+  }
+  .cinematic-result-card { padding-inline: 12px; }
+  .result-mini-card { width: clamp(66px, 21vw, 78px); }
+}
+
+/* Large phones / tablets. */
+@media (min-width: 681px) and (max-width: 899px) {
+  .app-shell { width: min(100%, 820px); }
+  .battle-zone { min-height: 300px; padding-inline: 18px; }
+  .played-card { width: clamp(150px, 24vw, 184px); }
+  .hand-card { flex-basis: clamp(80px, 13vw, 108px); width: clamp(80px, 13vw, 108px); }
+}
+
+/* Desktop: use the available screen instead of keeping phone-sized cards. */
+@media (min-width: 900px) {
+  .app-shell { width: min(100%, 1040px); padding-inline: 24px; }
+  .game { gap: 14px; }
+  .battle-zone { min-height: 340px; padding: 22px 34px; }
+  .played-card { width: clamp(176px, 18vw, 210px); }
+  .battle-zone .versus { min-width: 64px; min-height: 64px; }
+  .hand-section { padding-inline: 20px; }
+  .hand { gap: 10px; padding-top: 28px; }
+  .hand-card { flex-basis: clamp(88px, 9vw, 116px); width: clamp(88px, 9vw, 116px); }
+  .result-card { max-width: 500px; }
+}
+
+/* Short landscape screens: preserve the whole game without giant vertical gaps. */
+@media (orientation: landscape) and (max-height: 620px) {
+  .app-shell { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .game { gap: 8px; }
+  body.game-active .topbar { margin-bottom: 6px; }
+  .compact-match-bar { margin-bottom: 5px; padding-block: 7px; }
+  .series-progress { margin-bottom: 4px; }
+  .battle-zone { min-height: 190px; padding-block: 8px; }
+  .played-card { width: clamp(92px, 16vh, 128px); }
+  .battle-zone .versus { min-width: 40px; min-height: 40px; font-size: 12px; }
+  .message-box { min-height: 38px; padding-block: 7px; }
+  .match-log-panel { margin-top: 4px; }
+  .hand-section { position: relative; bottom: auto; margin-top: 4px; padding-top: 7px; }
+  .hand { min-height: 0; padding-top: 20px; padding-bottom: 8px; }
+  .hand-card { flex-basis: clamp(54px, 12vh, 76px); width: clamp(54px, 12vh, 76px); }
+  .hand-card.is-selected { transform: translateY(-14px) scale(1.045) !important; }
+}
+
+
+/* ====================================================================
+   v18.10.0 — lightweight 3D card prototype
+   CSS 3D only: keeps iPhone/PWA light while adding physical depth.
+   ==================================================================== */
+
+/* The table is the camera. */
+.battle-zone {
+  perspective: 1200px;
+  perspective-origin: 50% 42%;
+  transform-style: preserve-3d;
+}
+.battle-side {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* Physical card body: a thin dark-gold edge under the face. */
+.played-card {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow:
+    0 5px 0 rgba(77,54,25,.95),
+    0 8px 0 rgba(22,17,12,.96),
+    0 19px 34px rgba(0,0,0,.52),
+    0 0 24px rgba(183,139,63,.10);
+}
+.played-card img {
+  transform: translateZ(1px);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* A face-down card lands from slightly above the table instead of just fading in. */
+.played-card.is-set {
+  animation: cardSet3D .38s cubic-bezier(.16,.84,.24,1) both !important;
+}
+@keyframes cardSet3D {
+  0% {
+    transform: translateY(-34px) translateZ(50px) rotateX(-13deg) scale(.95);
+    opacity: 0;
+  }
+  58% {
+    transform: translateY(5px) translateZ(5px) rotateX(3deg) scale(1.018,.982);
+    opacity: 1;
+  }
+  78% {
+    transform: translateY(-2px) translateZ(10px) rotateX(-1deg) scale(.998,1.008);
+  }
+  100% {
+    transform: translateY(0) translateZ(0) rotateX(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* OPEN: real perspective flip with a tiny push toward the viewer at 45 degrees. */
+.played-card.flip-out {
+  animation: flipOut3D .175s cubic-bezier(.42,0,.76,.44) both !important;
+  transform-origin: 50% 50%;
+}
+.played-card.flip-in {
+  animation: flipIn3D .29s cubic-bezier(.18,.82,.24,1) both !important;
+  transform-origin: 50% 50%;
+}
+@keyframes flipOut3D {
+  0%   { transform: translateZ(0) rotateY(0deg) rotateX(0deg) scale(1); }
+  48%  { transform: translateZ(38px) rotateY(52deg) rotateX(2deg) scale(1.015); }
+  100% { transform: translateZ(12px) rotateY(90deg) rotateX(1deg) scale(.965); }
+}
+@keyframes flipIn3D {
+  0%   { transform: translateZ(12px) rotateY(-90deg) rotateX(1deg) scale(.965); }
+  46%  { transform: translateZ(40px) rotateY(-42deg) rotateX(-2deg) scale(1.02); }
+  82%  { transform: translateZ(8px) rotateY(4deg) rotateX(0deg) scale(1.006); }
+  100% { transform: translateZ(0) rotateY(0deg) rotateX(0deg) scale(1); }
+}
+
+/* The altar is a real tilted disc in the table plane. */
+.duel-altar {
+  transform: translate(-50%, -50%) rotateX(68deg) translateZ(-34px) !important;
+  transform-style: preserve-3d;
+  box-shadow:
+    inset 0 0 0 1px rgba(222,180,94,.14),
+    inset 0 0 34px rgba(217,166,77,.06),
+    0 24px 48px rgba(0,0,0,.32),
+    0 0 38px rgba(173,118,41,.08);
+}
+.battle-zone.countdown-step-1 .duel-altar {
+  transform: translate(-50%, -50%) rotateX(68deg) translateZ(-24px) scale(1.055) !important;
+}
+@keyframes altarOpenPulse {
+  0%   { transform: translate(-50%, -50%) rotateX(68deg) translateZ(-30px) scale(.92); }
+  45%  { transform: translate(-50%, -50%) rotateX(68deg) translateZ(-10px) scale(1.12); }
+  100% { transform: translate(-50%, -50%) rotateX(68deg) translateZ(-34px) scale(1); }
+}
+
+/* Hand cards: subtle thickness and lift. */
+.hand {
+  perspective: 950px;
+  perspective-origin: 50% 20%;
+}
+.hand-card {
+  --hover-tilt-x: 0deg;
+  --hover-tilt-y: 0deg;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow:
+    0 3px 0 rgba(72,51,25,.95),
+    0 5px 0 rgba(20,16,11,.94),
+    0 11px 22px rgba(0,0,0,.38);
+  transition: transform .13s ease, filter .13s ease, box-shadow .13s ease;
+}
+.hand-card img {
+  transform: translateZ(1px);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.hand-card.is-selected {
+  transform: perspective(900px) translateY(-20px) translateZ(24px) rotateX(calc(7deg + var(--hover-tilt-x))) rotateY(var(--hover-tilt-y)) scale(1.055) !important;
+  box-shadow:
+    0 5px 0 rgba(88,62,28,.98),
+    0 8px 0 rgba(24,18,12,.95),
+    0 27px 48px rgba(0,0,0,.62),
+    0 0 0 2px rgba(223,181,96,.28),
+    0 0 30px rgba(211,164,82,.22) !important;
+}
+.hand.is-slide-selecting .hand-card.is-selected {
+  transform: perspective(900px) translateY(-24px) translateZ(28px) rotateX(8deg) rotateY(0deg) scale(1.075) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hand-card:hover:not(:disabled):not(.is-selected) {
+    transform: perspective(850px) translateY(-7px) translateZ(12px) rotateX(var(--hover-tilt-x)) rotateY(var(--hover-tilt-y)) scale(1.012) !important;
+    box-shadow:
+      0 4px 0 rgba(78,55,26,.98),
+      0 7px 0 rgba(21,16,11,.96),
+      0 21px 34px rgba(0,0,0,.48),
+      0 0 20px rgba(211,164,82,.12) !important;
+  }
+}
+
+/* Winner glow stays readable above the 3D body. */
+.played-card.winner-card {
+  box-shadow:
+    0 5px 0 rgba(95,66,28,.98),
+    0 8px 0 rgba(23,17,10,.96),
+    0 22px 58px rgba(0,0,0,.50),
+    0 0 0 2px rgba(248,207,112,.34),
+    0 0 34px rgba(226,169,64,.56),
+    0 0 78px rgba(226,169,64,.28) !important;
+}
+
+/* Keep low-motion users on a stable, readable flat-ish version. */
+@media (prefers-reduced-motion: reduce) {
+  .played-card.is-set,
+  .played-card.flip-out,
+  .played-card.flip-in {
+    animation-duration: .01ms !important;
+  }
+  .duel-altar {
+    transform: translate(-50%, -50%) scaleY(.42) !important;
+  }
+  .hand-card.is-selected,
+  .hand.is-slide-selecting .hand-card.is-selected {
+    transform: translateY(-20px) scale(1.055) !important;
+  }
+}
+
+/* Short landscape screens get a slightly shallower lift so cards stay visible. */
+@media (orientation: landscape) and (max-height: 620px) {
+  .hand-card.is-selected {
+    transform: perspective(900px) translateY(-14px) translateZ(18px) rotateX(6deg) rotateY(var(--hover-tilt-y)) scale(1.045) !important;
+  }
+}
+
+
+/* ====================================================================
+   v18.10.1 — natural card placement
+   Removes the double-landing feel from the 3D prototype.
+   ==================================================================== */
+
+/* The moving card itself performs the player's placement. Do not add a
+   second transition that makes it look as if the card is thrown. */
+.commit-flight-card.commit-flight-natural {
+  transition: none !important;
+  transform: none;
+  will-change: transform, filter;
+}
+
+/* CPU placement has no visible hand source, so it uses a short inward slide
+   and settles flat instead of dropping dramatically from above. */
+.played-card.is-set {
+  --natural-set-x: 0px;
+  animation: cardSetNatural .27s cubic-bezier(.18,.78,.22,1) both !important;
+}
+.played-card.cpu-set { --natural-set-x: 15px; }
+.played-card.player-set { --natural-set-x: -15px; }
+
+@keyframes cardSetNatural {
+  0% {
+    transform: translate3d(var(--natural-set-x), 6px, 14px) rotateX(-4deg) scale(.988);
+    opacity: .72;
+  }
+  68% {
+    transform: translate3d(2px, 1px, 3px) rotateX(-1deg) scale(1.004);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Keep the tactile glint subtle; the physical settle should be the focus. */
+.played-card.is-set::after {
+  animation-duration: .27s !important;
+  opacity: .72;
+}
+
+body.fast-mode .played-card.is-set {
+  animation-duration: .15s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .played-card.is-set {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
+
+/* ====================================================================
+   v18.10.2 — POV hand-held 3D
+   Keeps the straight-row layout, but gives every card a physical holding
+   angle around a common hand pivot. The selected card is pulled forward.
+   ==================================================================== */
+.hand {
+  position: relative;
+  perspective: 760px !important;
+  perspective-origin: 50% 112% !important;
+  transform-style: preserve-3d;
+  isolation: isolate;
+  padding-bottom: 27px !important;
+}
+
+/* A soft grip/palm shadow behind the lower edge makes the row feel held
+   without introducing a literal hand graphic that could look artificial. */
+.hand::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  bottom: 1px;
+  width: min(78%, 430px);
+  height: 44px;
+  transform: translateX(-50%) rotateX(68deg) translateZ(-18px);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(133,92,47,.20), rgba(44,30,20,.20) 43%, rgba(0,0,0,0) 72%);
+  box-shadow: 0 -8px 28px rgba(0,0,0,.28);
+  filter: blur(.25px);
+}
+
+.hand > .hand-card {
+  --hold-yaw: 0deg;
+  --hold-roll: 0deg;
+  --hold-depth: 0px;
+  --selected-yaw: 0deg;
+  --hover-tilt-x: 0deg;
+  --hover-tilt-y: 0deg;
+  position: relative;
+  z-index: 1;
+  transform-origin: 50% 112% !important;
+  transform-style: preserve-3d;
+  transform:
+    translate3d(0, 0, var(--hold-depth))
+    rotateX(9deg)
+    rotateY(var(--hold-yaw))
+    rotateZ(var(--hold-roll)) !important;
+  box-shadow:
+    0 4px 0 rgba(81,57,27,.98),
+    0 7px 0 rgba(22,16,10,.97),
+    0 17px 27px rgba(0,0,0,.48) !important;
+  transition: transform .16s cubic-bezier(.2,.78,.2,1), box-shadow .16s ease, filter .14s ease;
+}
+
+/* Selected = the player has pulled one card out of the held row. */
+.hand > .hand-card.is-selected {
+  z-index: 12;
+  transform:
+    translate3d(0, -30px, 48px)
+    rotateX(1.5deg)
+    rotateY(calc(var(--selected-yaw) + var(--hover-tilt-y)))
+    rotateZ(0deg)
+    scale(1.075) !important;
+  box-shadow:
+    0 7px 0 rgba(91,64,29,.98),
+    0 10px 0 rgba(24,17,10,.96),
+    0 34px 54px rgba(0,0,0,.66),
+    0 0 0 2px rgba(223,181,96,.30),
+    0 0 34px rgba(211,164,82,.24) !important;
+}
+
+.hand.is-slide-selecting > .hand-card.is-selected {
+  transform:
+    translate3d(0, -34px, 56px)
+    rotateX(0deg)
+    rotateY(var(--selected-yaw))
+    rotateZ(0deg)
+    scale(1.09) !important;
+}
+
+.hand > .hand-card.is-dimmed {
+  transform:
+    translate3d(0, 1px, calc(var(--hold-depth) - 4px))
+    rotateX(10deg)
+    rotateY(var(--hold-yaw))
+    rotateZ(var(--hold-roll)) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hand > .hand-card:hover:not(:disabled):not(.is-selected) {
+    z-index: 8;
+    transform:
+      translate3d(0, -8px, calc(var(--hold-depth) + 18px))
+      rotateX(calc(5deg + var(--hover-tilt-x)))
+      rotateY(calc(var(--hold-yaw) + var(--hover-tilt-y)))
+      rotateZ(var(--hold-roll))
+      scale(1.018) !important;
+    box-shadow:
+      0 5px 0 rgba(86,60,28,.98),
+      0 8px 0 rgba(22,16,10,.96),
+      0 25px 38px rgba(0,0,0,.56),
+      0 0 22px rgba(211,164,82,.12) !important;
+  }
+}
+
+/* Touching a card compresses it by a few pixels before release, like a
+   thumb tightening on a physical card. */
+.hand > .hand-card:active:not(:disabled) {
+  transform:
+    translate3d(0, -4px, calc(var(--hold-depth) + 8px))
+    rotateX(6deg)
+    rotateY(var(--hold-yaw))
+    rotateZ(var(--hold-roll))
+    scale(.995) !important;
+}
+.hand > .hand-card.is-selected:active:not(:disabled) {
+  transform:
+    translate3d(0, -27px, 42px)
+    rotateX(3deg)
+    rotateY(var(--selected-yaw))
+    scale(1.058) !important;
+}
+
+@media (max-width: 680px) {
+  .hand { perspective: 690px !important; padding-bottom: 24px !important; }
+  .hand::before { width: 88%; height: 38px; bottom: 2px; }
+  .hand > .hand-card.is-selected {
+    transform: translate3d(0, -25px, 40px) rotateX(2deg) rotateY(var(--selected-yaw)) scale(1.065) !important;
+  }
+  .hand.is-slide-selecting > .hand-card.is-selected {
+    transform: translate3d(0, -29px, 46px) rotateX(1deg) rotateY(var(--selected-yaw)) scale(1.078) !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .hand > .hand-card { rotate: 0deg; }
+  .hand > .hand-card.is-selected {
+    transform: translate3d(0, -21px, 34px) rotateX(2deg) rotateY(var(--selected-yaw)) scale(1.055) !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 620px) {
+  .hand { padding-bottom: 12px !important; perspective-origin: 50% 120% !important; }
+  .hand::before { height: 28px; bottom: -2px; }
+  .hand > .hand-card.is-selected,
+  .hand.is-slide-selecting > .hand-card.is-selected {
+    transform: translate3d(0, -16px, 28px) rotateX(2deg) rotateY(var(--selected-yaw)) scale(1.048) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hand > .hand-card,
+  .hand > .hand-card.is-selected,
+  .hand.is-slide-selecting > .hand-card.is-selected,
+  .hand > .hand-card.is-dimmed {
+    transition: none !important;
+  }
+}
+
+
+/* v18.10.5 — battle result at center made more dominant ---------------- */
+.battle-zone .versus {
+  position: relative;
+  overflow: visible;
+  transition: min-width .22s ease, min-height .22s ease, border-radius .22s ease,
+              color .18s ease, background .18s ease, border-color .18s ease,
+              box-shadow .18s ease, transform .18s ease;
+}
+.battle-zone .versus.is-win,
+.battle-zone .versus.is-lose,
+.battle-zone .versus.is-draw {
+  min-width: 118px;
+  min-height: 68px;
+  padding-inline: 18px;
+  border-radius: 999px;
+  font-size: clamp(20px, 5.2vw, 30px);
+  letter-spacing: .16em;
+  font-weight: 1000;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgba(0,0,0,.32), 0 0 24px currentColor;
+}
+.battle-zone .versus.is-win::before,
+.battle-zone .versus.is-lose::before,
+.battle-zone .versus.is-draw::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 999px;
+  opacity: .55;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(6px);
+}
+.battle-zone .versus.is-win {
+  color: #fff3c5;
+  border-color: rgba(247,205,104,.98);
+  background: radial-gradient(circle at 50% 38%, rgba(144,104,28,1), rgba(74,50,18,.98) 52%, rgba(18,13,10,.98) 84%);
+  box-shadow: 0 0 0 2px rgba(247,205,104,.18), 0 0 44px rgba(238,180,65,.64), 0 10px 30px rgba(0,0,0,.45), inset 0 0 22px rgba(255,226,151,.18);
+}
+.battle-zone .versus.is-win::before { background: radial-gradient(circle, rgba(240,190,70,.60), rgba(240,190,70,0)); }
+.battle-zone .versus.is-lose {
+  color: #ffd6cf;
+  border-color: rgba(185,72,58,.94);
+  background: radial-gradient(circle at 50% 38%, rgba(114,36,28,1), rgba(69,24,20,.98) 52%, rgba(17,11,11,.98) 84%);
+  box-shadow: 0 0 0 2px rgba(185,72,58,.14), 0 0 40px rgba(153,45,35,.54), 0 10px 30px rgba(0,0,0,.45), inset 0 0 22px rgba(222,103,85,.15);
+}
+.battle-zone .versus.is-lose::before { background: radial-gradient(circle, rgba(175,56,44,.54), rgba(175,56,44,0)); }
+.battle-zone .versus.is-draw {
+  color: #f0f5f5;
+  border-color: rgba(184,198,198,.84);
+  background: radial-gradient(circle at 50% 38%, rgba(90,104,108,.98), rgba(52,60,64,.98) 52%, rgba(14,17,18,.98) 84%);
+  box-shadow: 0 0 0 2px rgba(202,215,215,.10), 0 0 36px rgba(167,184,184,.36), 0 10px 30px rgba(0,0,0,.45), inset 0 0 20px rgba(220,232,232,.12);
+}
+.battle-zone .versus.is-draw::before { background: radial-gradient(circle, rgba(197,213,218,.36), rgba(197,213,218,0)); }
+.battle-zone .versus.is-outcome-pop {
+  animation: battleOutcomePop .68s cubic-bezier(.18,.82,.22,1) both;
+}
+@keyframes battleOutcomePop {
+  0% { transform: scale(.62); opacity: .08; }
+  35% { transform: scale(1.22); opacity: 1; }
+  55% { transform: scale(.95); opacity: 1; }
+  78% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@media (max-width: 430px) {
+  .battle-zone .versus.is-win,
+  .battle-zone .versus.is-lose,
+  .battle-zone .versus.is-draw {
+    min-width: 84px;
+    min-height: 52px;
+    padding-inline: 10px;
+    font-size: clamp(15px, 4.8vw, 18px);
+    letter-spacing: .10em;
+    text-shadow: 0 1px 0 rgba(0,0,0,.26), 0 0 16px currentColor;
+  }
+  .battle-zone .versus.is-win::before,
+  .battle-zone .versus.is-lose::before,
+  .battle-zone .versus.is-draw::before {
+    inset: -8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .battle-zone .versus.is-outcome-pop { animation: none !important; }
 }

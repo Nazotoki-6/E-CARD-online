@@ -1,11 +1,15 @@
-const CACHE_NAME = 'ecard-online-v18-8-9-winner-surface-glow-20260923';
+const CACHE_NAME = 'ecard-online-v18-10-6-random-bgm-20261003';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=18.8.5',
-  './script.js?v=18.8.5',
+  './style.css?v=18.10.6',
+  './script.js?v=18.10.6',
   './manifest.json',
-  './audio/Devil_Disaster.mp3?v=18.8.5',
+  './audio/The_Final_Ante.mp3?v=18.10.6',
+  './audio/The_Heavy_Hand.mp3?v=18.10.6',
+  './audio/The_Midnight_Wager.mp3?v=18.10.6',
+  './audio/The_Final_Gambit.mp3?v=18.10.6',
+  './audio/Margin_of_Error.mp3?v=18.10.6',
   './images/back.webp',
   './images/citizen.webp',
   './images/emperor.webp',
@@ -74,12 +78,11 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Safari / iPhone PWAのMP3はRangeリクエストになることがある。
-  // キャッシュ済みの全MP3から206 Partial Contentを返し、オフラインでも再生可能にする。
-  if (url.pathname.endsWith('/audio/Devil_Disaster.mp3')) {
+  // 5曲すべてを同じ方式でオフライン再生できるよう、audio/*.mp3を汎用処理する。
+  if (url.pathname.includes('/audio/') && url.pathname.endsWith('.mp3')) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
-      let cached = await cache.match('./audio/Devil_Disaster.mp3?v=18.8.5');
-      if (!cached) cached = await cache.match(request, { ignoreSearch: true });
+      let cached = await cache.match(request, { ignoreSearch: true });
 
       if (request.headers.has('range') && cached) {
         return makeRangeResponse(request, cached.clone());
@@ -87,7 +90,7 @@ self.addEventListener('fetch', (event) => {
 
       try {
         const network = await fetch(request);
-        if (network && network.status === 200) cache.put('./audio/Devil_Disaster.mp3?v=18.8.5', network.clone());
+        if (network && network.status === 200) cache.put(request, network.clone());
         return network;
       } catch (error) {
         if (cached) return cached;
