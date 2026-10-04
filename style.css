@@ -4738,3 +4738,79 @@ body.fast-mode .played-card.is-set {
 @media (prefers-reduced-motion: reduce) {
   .battle-zone .versus.is-outcome-pop { animation: none !important; }
 }
+
+/* v18.10.6.1 — mobile battle outcome stays exactly on the VS center */
+@media (max-width: 680px) {
+  .battle-zone > .versus.is-win,
+  .battle-zone > .versus.is-lose,
+  .battle-zone > .versus.is-draw {
+    width: auto !important;
+    height: auto !important;
+    justify-self: center !important;
+    align-self: center !important;
+    margin: 0 !important;
+    z-index: 7 !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .battle-zone > .versus.is-win,
+  .battle-zone > .versus.is-lose,
+  .battle-zone > .versus.is-draw {
+    width: auto !important;
+    height: auto !important;
+    justify-self: center !important;
+    align-self: center !important;
+  }
+}
+
+/* v18.10.6.2 — mobile outcomes are anchored to the exact battle center.
+   When the label expands from VS to WIN / LOSE / DRAW it is removed from
+   the narrow center grid column, so text width can no longer shift it. */
+@media (max-width: 680px) {
+  .battle-zone > .versus.is-win,
+  .battle-zone > .versus.is-lose,
+  .battle-zone > .versus.is-draw {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: max-content !important;
+    height: auto !important;
+    margin: 0 !important;
+    justify-self: auto !important;
+    align-self: auto !important;
+    transform: translate(-50%, -50%);
+    transform-origin: 50% 50% !important;
+    z-index: 9 !important;
+  }
+
+  .battle-zone > .versus.is-outcome-pop {
+    animation: battleOutcomePopMobile .68s cubic-bezier(.18,.82,.22,1) both !important;
+  }
+
+  @keyframes battleOutcomePopMobile {
+    0%   { transform: translate(-50%, -50%) scale(.62); opacity: .08; }
+    35%  { transform: translate(-50%, -50%) scale(1.22); opacity: 1; }
+    55%  { transform: translate(-50%, -50%) scale(.95); opacity: 1; }
+    78%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+}
+
+@media (max-width: 360px) {
+  .battle-zone > .versus.is-win,
+  .battle-zone > .versus.is-lose,
+  .battle-zone > .versus.is-draw {
+    left: 50% !important;
+    top: 50% !important;
+  }
+}
+
+@media (max-width: 680px) and (prefers-reduced-motion: reduce) {
+  .battle-zone > .versus.is-outcome-pop {
+    animation: none !important;
+    transform: translate(-50%, -50%) !important;
+  }
+}

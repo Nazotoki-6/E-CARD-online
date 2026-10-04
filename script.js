@@ -101,6 +101,7 @@ let playerWins = 0;
 let cpuWins = 0;
 let inputLocked = false;
 let selectedHandIndex = null;
+let committedHandIndex = null;
 let handDragSuppressClickUntil = 0;
 const handDragState = {
   active: false,
@@ -423,6 +424,10 @@ function restoreSeriesState(state) {
   playerRoleLabel.textContent = sideLabel(playerSide);
   cpuRoleLabel.textContent = sideLabel(oppositeSide(playerSide));
   resetBattleView();
+  if (state.phase === 'pending' && state.pending && Number.isInteger(state.pending.playerIndex)) {
+    const pendingIndex = state.pending.playerIndex;
+    if (pendingIndex >= 0 && pendingIndex < playerHand.length) committedHandIndex = pendingIndex;
+  }
   renderHand();
   renderMatchLog();
   updateStatus();
@@ -1011,6 +1016,7 @@ async function runMatchIntro(sequenceId) {
   if (sequenceId !== battleSequenceId || gameScreen.classList.contains('hidden')) return;
   matchIntro.classList.add('hidden');
   inputLocked = false;
+  committedHandIndex = null;
   renderHand();
   saveSeriesState('ready');
 }
@@ -1183,21 +1189,33 @@ function setupHandSlideSelection() {
   });
 }
 
+function hasCommittedHandCard() {
+  return Number.isInteger(committedHandIndex)
+    && committedHandIndex >= 0
+    && committedHandIndex < playerHand.length;
+}
+
+function getVisibleHandCount() {
+  return Math.max(0, playerHand.length - (hasCommittedHandCard() ? 1 : 0));
+}
+
 function renderHand() {
   playerHandEl.innerHTML = '';
-  playerHandEl.dataset.count = String(playerHand.length);
+  const visibleEntries = playerHand
+    .map((card, index) => ({ card, index }))
+    .filter(({ index }) => index !== committedHandIndex);
+  playerHandEl.dataset.count = String(visibleEntries.length);
 
-  playerHand.forEach((card, index) => {
+  visibleEntries.forEach(({ card, index }, visibleIndex) => {
     const button = document.createElement('button');
 
-    // v18.10.2: 横一列は維持しつつ、手元から見た3Dの持ち角度を付ける。
-    // 左右のカードほど少し内向き、中央ほど正面にして「並べたカード」ではなく
-    // プレイヤーが手前で保持しているように見せる。
+    // 出したカードを非表示にしている最中も、残ったカードだけで角度を再計算する。
+    // これで中央カードを出した場合などに、残り手札が片寄って見えない。
     const rotate = 0;
     const lift = 0;
-    const middle = (playerHand.length - 1) / 2;
+    const middle = (visibleEntries.length - 1) / 2;
     const spread = Math.max(1, middle);
-    const holdPosition = Math.max(-1, Math.min(1, (index - middle) / spread));
+    const holdPosition = Math.max(-1, Math.min(1, (visibleIndex - middle) / spread));
     const holdYaw = -holdPosition * 7.2;
     const holdRoll = holdPosition * 0.75;
     const holdDepth = (1 - Math.abs(holdPosition)) * 9;
@@ -1500,6 +1518,7 @@ function decorateOutcome(result) {
 async function resolveChosenBattle(pending, resumed = false, commitSourceRect = null) {
   enforceBattleSideOrder();
   const playerIndex = pending.playerIndex;
+  committedHandIndex = playerIndex;
   const cpuIndex = pending.cpuIndex;
   const playerCard = pending.playerCard;
   const cpuCard = pending.cpuCard;
@@ -1610,6 +1629,7 @@ async function resolveChosenBattle(pending, resumed = false, commitSourceRect = 
 
       recordMatchResult(playerWon, playerSide, `${seriesId}:m${currentMatch}`);
       setMessage('勝負決着。');
+      committedHandIndex = null;
       updateStatus();
       punchScore(playerWon);
       renderHand();
@@ -1629,6 +1649,7 @@ async function resolveChosenBattle(pending, resumed = false, commitSourceRect = 
     setMessage('次のカードを選んでください。');
     playInMatch += 1;
     reshuffleRemainingHands();
+    committedHandIndex = null;
     updateStatus();
     lockCpuCard();
     saveSeriesState('ready');
@@ -1663,6 +1684,7 @@ async function resolveChosenBattle(pending, resumed = false, commitSourceRect = 
   recordMatchResult(playerWon, playerSide, `${seriesId}:m${currentMatch}`);
 
   setMessage('勝負決着。');
+  committedHandIndex = null;
   updateStatus();
   punchScore(playerWon);
   renderHand();
@@ -1795,6 +1817,9 @@ async function playCard(playerIndex) {
   safeVibrate([10, 18, 24]);
   await wait(70);
   selectedHandIndex = null;
+  committedHandIndex = playerIndex;
+  renderHand();
+  updateStatus();
 
   const cpuIndex = Number.isInteger(cpuPlannedIndex) ? cpuPlannedIndex : chooseStrongCpuCardIndex();
   const pending = {
@@ -1811,6 +1836,7 @@ async function playCard(playerIndex) {
 
 async function resumePendingBattle(pending) {
   if (!pending || !Number.isInteger(pending.playerIndex) || !Number.isInteger(pending.cpuIndex)) {
+    committedHandIndex = null;
     inputLocked = false;
     if (!Number.isInteger(cpuPlannedIndex)) lockCpuCard();
     saveSeriesState('ready');
@@ -1837,6 +1863,7 @@ function showPlayedCard(target, card) {
 
 function resetBattleView() {
   enforceBattleSideOrder();
+  committedHandIndex = null;
   hideSelectionTray();
   countdownOverlay.classList.add('hidden');
   countdownOverlay.textContent = '';
@@ -1850,7 +1877,7 @@ function updateStatus() {
   matchLabel.textContent = `${currentMatch} / ${TOTAL_MATCHES}`;
   groupLabel.textContent = `${Math.ceil(currentMatch / MATCHES_PER_GROUP)} / 4`;
   roundLabel.textContent = `${Math.min(playInMatch, 4)} / 4`;
-  remainingLabel.textContent = `残り${playerHand.length}枚`;
+  remainingLabel.textContent = `残り${getVisibleHandCount()}枚`;
   playerScoreLabel.textContent = playerWins;
   cpuScoreLabel.textContent = cpuWins;
 
@@ -2025,6 +2052,7 @@ async function continueSeries() {
 
 function backToSetup() {
   battleSequenceId += 1;
+  committedHandIndex = null;
   cpuPersonality = null;
   if (victoryBurst) victoryBurst.classList.add('hidden');
   stopBgm(true);
@@ -2095,11 +2123,11 @@ resetLotteryView();
 const audioBtn = document.getElementById('audioBtn');
 const sfxBtn = document.getElementById('sfxBtn');
 const BGM_TRACKS = [
-  { title: 'The Final Ante', src: './audio/The_Final_Ante.mp3?v=18.10.6' },
-  { title: 'The Heavy Hand', src: './audio/The_Heavy_Hand.mp3?v=18.10.6' },
-  { title: 'The Midnight Wager', src: './audio/The_Midnight_Wager.mp3?v=18.10.6' },
-  { title: 'The Final Gambit', src: './audio/The_Final_Gambit.mp3?v=18.10.6' },
-  { title: 'Margin of Error', src: './audio/Margin_of_Error.mp3?v=18.10.6' },
+  { title: 'The Final Ante', src: './audio/The_Final_Ante.mp3?v=18.10.6.4' },
+  { title: 'The Heavy Hand', src: './audio/The_Heavy_Hand.mp3?v=18.10.6.4' },
+  { title: 'The Midnight Wager', src: './audio/The_Midnight_Wager.mp3?v=18.10.6.4' },
+  { title: 'The Final Gambit', src: './audio/The_Final_Gambit.mp3?v=18.10.6.4' },
+  { title: 'Margin of Error', src: './audio/Margin_of_Error.mp3?v=18.10.6.4' },
 ];
 
 const AUDIO = {

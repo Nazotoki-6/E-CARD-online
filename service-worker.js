@@ -1,15 +1,15 @@
-const CACHE_NAME = 'ecard-online-v18-10-6-random-bgm-20261003';
+const CACHE_NAME = 'ecard-online-v18-10-6-4-stability-fix-20261004';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=18.10.6',
-  './script.js?v=18.10.6',
+  './style.css?v=18.10.6.4',
+  './script.js?v=18.10.6.4',
   './manifest.json',
-  './audio/The_Final_Ante.mp3?v=18.10.6',
-  './audio/The_Heavy_Hand.mp3?v=18.10.6',
-  './audio/The_Midnight_Wager.mp3?v=18.10.6',
-  './audio/The_Final_Gambit.mp3?v=18.10.6',
-  './audio/Margin_of_Error.mp3?v=18.10.6',
+  './audio/The_Final_Ante.mp3?v=18.10.6.4',
+  './audio/The_Heavy_Hand.mp3?v=18.10.6.4',
+  './audio/The_Midnight_Wager.mp3?v=18.10.6.4',
+  './audio/The_Final_Gambit.mp3?v=18.10.6.4',
+  './audio/Margin_of_Error.mp3?v=18.10.6.4',
   './images/back.webp',
   './images/citizen.webp',
   './images/emperor.webp',
