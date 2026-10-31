@@ -4814,3 +4814,16 @@ body.fast-mode .played-card.is-set {
     transform: translate(-50%, -50%) !important;
   }
 }
+
+
+/* v18.10.6.5 — outcome is anchored to the true midpoint between card faces.
+   This fixes the visual vertical/horizontal offset caused by player labels
+   being included in battle-zone's geometric center on phones. */
+@media (max-width: 680px) {
+  .battle-zone > .versus.is-win,
+  .battle-zone > .versus.is-lose,
+  .battle-zone > .versus.is-draw {
+    left: var(--outcome-left, 50%) !important;
+    top: var(--outcome-top, 50%) !important;
+  }
+}

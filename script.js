@@ -1025,6 +1025,26 @@ function currentPickPrompt() {
   return 'カードを選んでください。';
 }
 
+function positionBattleOutcomeBetweenCards() {
+  if (!battleZone || !battleVersus || !playerPlayedEl || !cpuPlayedEl) return;
+  const zoneRect = battleZone.getBoundingClientRect();
+  const playerRect = playerPlayedEl.getBoundingClientRect();
+  const cpuRect = cpuPlayedEl.getBoundingClientRect();
+  if (!zoneRect.width || !zoneRect.height || !playerRect.width || !cpuRect.width) return;
+
+  // 見た目の中央は battle-zone 全体の50%ではなく、実際の2枚のカード中心の中間。
+  // ラベル「あなた / CPU」の高さやスマホ幅の影響を受けず、常にカード間中央へ置く。
+  const playerCx = playerRect.left + playerRect.width / 2;
+  const playerCy = playerRect.top + playerRect.height / 2;
+  const cpuCx = cpuRect.left + cpuRect.width / 2;
+  const cpuCy = cpuRect.top + cpuRect.height / 2;
+  const x = ((playerCx + cpuCx) / 2) - zoneRect.left;
+  const y = ((playerCy + cpuCy) / 2) - zoneRect.top;
+
+  battleVersus.style.setProperty('--outcome-left', `${x.toFixed(2)}px`);
+  battleVersus.style.setProperty('--outcome-top', `${y.toFixed(2)}px`);
+}
+
 function setBattleVersusOutcome(kind = 'vs') {
   if (!battleVersus) return;
   const labels = { vs: 'VS', win: 'WIN', lose: 'LOSE', draw: 'DRAW' };
@@ -1032,11 +1052,23 @@ function setBattleVersusOutcome(kind = 'vs') {
   battleVersus.textContent = labels[normalized];
   battleVersus.classList.remove('is-win', 'is-lose', 'is-draw', 'is-outcome-pop');
   if (normalized !== 'vs') {
+    positionBattleOutcomeBetweenCards();
     battleVersus.classList.add(`is-${normalized}`);
+    // レイアウト確定後にも再計測して、画像描画や端末回転による1px単位のズレを防ぐ。
+    requestAnimationFrame(positionBattleOutcomeBetweenCards);
     void battleVersus.offsetWidth;
     battleVersus.classList.add('is-outcome-pop');
+  } else {
+    battleVersus.style.removeProperty('--outcome-left');
+    battleVersus.style.removeProperty('--outcome-top');
   }
 }
+
+window.addEventListener('resize', () => {
+  if (battleVersus?.classList.contains('is-win') || battleVersus?.classList.contains('is-lose') || battleVersus?.classList.contains('is-draw')) {
+    positionBattleOutcomeBetweenCards();
+  }
+}, { passive: true });
 
 function hideSelectionTray() {
   // v18.9.3で確認トレイ自体は削除済み。選択状態の初期化だけを担当する。
