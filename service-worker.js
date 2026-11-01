@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecard-online-v18-10-6-5-outcome-midpoint-20261004';
+const CACHE_NAME = 'ecard-online-v18-10-6-6-vs-anchor-20261031';
 const APP_SHELL = [
   './',
   './index.html',

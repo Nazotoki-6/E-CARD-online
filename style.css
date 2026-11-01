@@ -4816,9 +4816,9 @@ body.fast-mode .played-card.is-set {
 }
 
 
-/* v18.10.6.5 — outcome is anchored to the true midpoint between card faces.
-   This fixes the visual vertical/horizontal offset caused by player labels
-   being included in battle-zone's geometric center on phones. */
+/* v18.10.6.6 — outcome is anchored to the original VS badge position.
+   WIN / LOSE / DRAW all reuse exactly the same center point as VS, avoiding
+   3D card-coordinate drift on phones. */
 @media (max-width: 680px) {
   .battle-zone > .versus.is-win,
   .battle-zone > .versus.is-lose,
