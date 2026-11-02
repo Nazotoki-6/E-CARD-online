@@ -16,7 +16,7 @@
   <link rel="preload" as="image" href="images/citizen.webp" />
   <link rel="preload" as="image" href="images/emperor.webp" />
   <link rel="preload" as="image" href="images/slave.webp" />
-  <link rel="stylesheet" href="style.css?v=18.10.6.6" />
+  <link rel="stylesheet" href="style.css?v=18.10.6.7" />
 </head>
 <body>
   <main class="app-shell">
@@ -227,7 +227,8 @@
           <div id="playerPlayed" class="played-card placeholder">?</div>
         </div>
 
-        <div id="battleVersus" class="versus" aria-live="polite">VS</div>
+        <div id="battleVersus" class="versus" aria-hidden="true">VS</div>
+        <div id="battleOutcomeOverlay" class="battle-outcome-overlay hidden" aria-live="assertive" aria-atomic="true"></div>
 
         <div class="battle-side cpu-battle-side">
           <p>CPU</p>
@@ -384,6 +385,6 @@
   </main>
 
   <audio id="bgmTrack" src="audio/The_Final_Ante.mp3?v=18.10.6.4" preload="auto" playsinline webkit-playsinline aria-hidden="true"></audio>
-  <script src="script.js?v=18.10.6.6"></script>
+  <script src="script.js?v=18.10.6.7"></script>
 </body>
 </html>

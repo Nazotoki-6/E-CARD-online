@@ -31,6 +31,7 @@ const seriesProgress = document.getElementById('seriesProgress');
 const orderLabel = document.getElementById('orderLabel');
 const battleZone = document.getElementById('battleZone');
 const battleVersus = document.getElementById('battleVersus');
+const battleOutcomeOverlay = document.getElementById('battleOutcomeOverlay');
 const compactMatchLabel = document.getElementById('compactMatchLabel');
 const compactSideLabel = document.getElementById('compactSideLabel');
 const compactPlayLabel = document.getElementById('compactPlayLabel');
@@ -1025,60 +1026,64 @@ function currentPickPrompt() {
   return 'カードを選んでください。';
 }
 
-let battleVsAnchor = null;
-
-function cacheBattleVsAnchor() {
-  if (!battleZone || !battleVersus) return;
-  // 結果表示中は絶対配置されているので、通常のVS状態でだけ基準位置を記録する。
-  if (battleVersus.classList.contains('is-win') || battleVersus.classList.contains('is-lose') || battleVersus.classList.contains('is-draw')) return;
+function positionBattleOutcomeOverlay() {
+  if (!battleZone || !battleOutcomeOverlay || !playerPlayedEl || !cpuPlayedEl) return;
   const zoneRect = battleZone.getBoundingClientRect();
-  const vsRect = battleVersus.getBoundingClientRect();
-  if (!zoneRect.width || !zoneRect.height || !vsRect.width || !vsRect.height) return;
-  battleVsAnchor = {
-    x: vsRect.left + vsRect.width / 2 - zoneRect.left,
-    y: vsRect.top + vsRect.height / 2 - zoneRect.top,
-  };
-}
+  const playerRect = playerPlayedEl.getBoundingClientRect();
+  const cpuRect = cpuPlayedEl.getBoundingClientRect();
+  if (!zoneRect.width || !zoneRect.height || !playerRect.width || !cpuRect.width) return;
 
-function applyBattleVsAnchor() {
-  if (!battleVersus) return;
-  if (!battleVsAnchor) cacheBattleVsAnchor();
-  if (!battleVsAnchor) return;
-  battleVersus.style.setProperty('--outcome-left', `${battleVsAnchor.x.toFixed(2)}px`);
-  battleVersus.style.setProperty('--outcome-top', `${battleVsAnchor.y.toFixed(2)}px`);
+  // Independent overlay: use the visual midpoint of the two actual card faces.
+  // It is not part of the grid, so WIN / LOSE / DRAW width can never move it.
+  const playerCx = playerRect.left + playerRect.width / 2;
+  const playerCy = playerRect.top + playerRect.height / 2;
+  const cpuCx = cpuRect.left + cpuRect.width / 2;
+  const cpuCy = cpuRect.top + cpuRect.height / 2;
+  const x = ((playerCx + cpuCx) / 2) - zoneRect.left;
+  const y = ((playerCy + cpuCy) / 2) - zoneRect.top;
+
+  battleOutcomeOverlay.style.left = `${x.toFixed(2)}px`;
+  battleOutcomeOverlay.style.top = `${y.toFixed(2)}px`;
 }
 
 function setBattleVersusOutcome(kind = 'vs') {
-  if (!battleVersus) return;
   const labels = { vs: 'VS', win: 'WIN', lose: 'LOSE', draw: 'DRAW' };
   const normalized = Object.prototype.hasOwnProperty.call(labels, kind) ? kind : 'vs';
 
-  // 結果へ切り替える直前の「VS」の実位置を保存する。
-  if (normalized !== 'vs') cacheBattleVsAnchor();
-
-  battleVersus.textContent = labels[normalized];
-  battleVersus.classList.remove('is-win', 'is-lose', 'is-draw', 'is-outcome-pop');
-  if (normalized !== 'vs') {
-    applyBattleVsAnchor();
-    battleVersus.classList.add(`is-${normalized}`);
-    void battleVersus.offsetWidth;
-    battleVersus.classList.add('is-outcome-pop');
-  } else {
-    battleVersus.style.removeProperty('--outcome-left');
-    battleVersus.style.removeProperty('--outcome-top');
-    // 通常レイアウトへ戻った次フレームで、次回用のVS位置を再記録。
-    requestAnimationFrame(() => {
-      battleVsAnchor = null;
-      cacheBattleVsAnchor();
-    });
+  // VS remains a fixed grid element. Results use a completely separate overlay.
+  if (battleVersus) {
+    battleVersus.textContent = 'VS';
+    battleVersus.classList.remove('is-win', 'is-lose', 'is-draw', 'is-outcome-pop', 'outcome-hidden');
   }
+  if (!battleOutcomeOverlay) return;
+
+  battleOutcomeOverlay.classList.remove('is-win', 'is-lose', 'is-draw', 'is-outcome-pop');
+  if (normalized === 'vs') {
+    battleOutcomeOverlay.classList.add('hidden');
+    battleOutcomeOverlay.textContent = '';
+    battleOutcomeOverlay.removeAttribute('style');
+    return;
+  }
+
+  battleOutcomeOverlay.textContent = labels[normalized];
+  battleOutcomeOverlay.classList.remove('hidden');
+  battleOutcomeOverlay.classList.add(`is-${normalized}`);
+  battleVersus?.classList.add('outcome-hidden');
+
+  // Position once now and again after layout/paint to cover iPhone image/layout timing.
+  positionBattleOutcomeOverlay();
+  requestAnimationFrame(() => {
+    positionBattleOutcomeOverlay();
+    requestAnimationFrame(positionBattleOutcomeOverlay);
+  });
+
+  void battleOutcomeOverlay.offsetWidth;
+  battleOutcomeOverlay.classList.add('is-outcome-pop');
 }
 
 window.addEventListener('resize', () => {
-  // 画面回転・リサイズ後は、通常VSへ戻ったタイミングで再計測する。
-  if (battleVersus && !battleVersus.classList.contains('is-win') && !battleVersus.classList.contains('is-lose') && !battleVersus.classList.contains('is-draw')) {
-    battleVsAnchor = null;
-    requestAnimationFrame(cacheBattleVsAnchor);
+  if (battleOutcomeOverlay && !battleOutcomeOverlay.classList.contains('hidden')) {
+    requestAnimationFrame(positionBattleOutcomeOverlay);
   }
 }, { passive: true });
 
